@@ -35,6 +35,10 @@ interface Campaign {
   deadline: string;
   goalAmount: string;
   totalRaised: string;
+  title: string;
+  description: string;
+  location: string;
+  imageUrl?: string;
 }
 
 export default function CampaignList() {
@@ -102,15 +106,15 @@ export default function CampaignList() {
         <Card key={campaign.address} className="overflow-hidden hover:shadow-lg transition-shadow">
           <CardHeader className="p-0">
             <Image
-              src='/images/placeholder.svg'
-              alt={campaign.address}
+              src={campaign.imageUrl || '/images/placeholder.svg'}
+              alt={campaign.title || campaign.address}
               width={600}
               height={400}
               className="h-[200px] w-full object-cover"
             />
           </CardHeader>
           <CardContent className="p-6">
-            <h2 className="mb-2 text-xl font-bold">{'Campaign Title'}</h2>
+            <h2 className="mb-2 text-xl font-bold">{campaign.title || 'Campaign Title'}</h2>
             <div className="mb-4 flex items-center gap-2">
               <Image
                 src={`https://avatar.vercel.sh/${campaign.address}`}
@@ -121,10 +125,10 @@ export default function CampaignList() {
               />
               <span className="font-medium">{`${campaign.owner.slice(0, 10)}...` || 'Campaign Author'}</span>
               <span className="text-gray-500">•</span>
-              <span className="text-gray-500">{'Earth'}</span>
+              <span className="text-gray-500">{campaign.location || 'Earth'}</span>
             </div>
             <div className="space-y-2 py-5 ">
-              <p className=" text-gray-600">{'Campaign Description'}</p>
+              <p className="text-gray-600">{campaign.description || 'Campaign Description'}</p>
 
               <p className="text-sm"><strong>Launch:</strong> {formatDate(campaign.launchTime)}</p>
               <p className="text-sm"><strong>Deadline:</strong> {formatDate(campaign.deadline)}</p>

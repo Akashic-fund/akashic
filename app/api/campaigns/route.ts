@@ -3,9 +3,90 @@ import { celoAlfajores } from 'viem/chains';
 import { NextResponse } from 'next/server';
 import { CampaignInfoABI } from '@/contracts/abi/CampaignInfo';
 
+import { prisma } from '@/lib/prisma';
 const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_CAMPAIGN_INFO_FACTORY;
 const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL;
 
+type CombinedCampaignData = {
+  id: number;
+  title: string;
+  description: string;
+  fundingGoal: string;
+  startTime: Date;
+  endTime: Date;
+  creatorAddress: string;
+  status: string;
+  transactionHash: string | null;
+  address: string;
+  owner: string;
+  launchTime: string;
+  deadline: string;
+  goalAmount: string;
+  totalRaised: string;
+};
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json()
+    const {
+      title,
+      description,
+      fundingGoal,
+      startTime,
+      endTime,
+      creatorAddress,
+      status
+    } = body
+
+    const campaign = await prisma.campaign.create({
+      data: {
+        title,
+        description,
+        fundingGoal,
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        creatorAddress,
+        status
+      },
+    })
+
+    return NextResponse.json({ campaignId: campaign.id }, { status: 201 })
+  } catch (error) {
+    console.error('Failed to create campaign:', error)
+    return NextResponse.json(
+      { error: 'Failed to create campaign' },
+      { status: 500 }
+    )
+  }
+}
+export async function PATCH(
+  request: Request,
+  { params }: { params: { campaignId: string } }
+) {
+  try {
+    const body = await request.json()
+    const { status, transactionHash, campaignAddress } = body
+
+    const campaign = await prisma.campaign.update({
+      where: {
+        id: parseInt(params.campaignId)
+      },
+      data: {
+        status,
+        transactionHash,
+        campaignAddress
+      },
+    })
+
+    return NextResponse.json(campaign)
+  } catch (error) {
+    console.error('Failed to update campaign:', error)
+    return NextResponse.json(
+      { error: 'Failed to update campaign' },
+      { status: 500 }
+    )
+  }
+}
 export async function GET() {
   try {
     if (!FACTORY_ADDRESS || !RPC_URL) {
@@ -33,7 +114,7 @@ export async function GET() {
     });
 
     // Fetch details for each campaign
-    const campaigns = await Promise.all(
+    const onChainCampaigns = await Promise.all(
       events.map(async (event) => {
         const campaignAddress = event.args.campaignInfoAddress as `0x${string}`;
 
@@ -41,7 +122,7 @@ export async function GET() {
         if (!campaignAddress) {
           throw new Error('Campaign address is undefined');
         }
-
+        console.log('Campaign address:', campaignAddress);
         // Get campaign details using contract reads
         const [
           owner,
@@ -80,15 +161,45 @@ export async function GET() {
         return {
           address: campaignAddress,
           owner,
-          launchTime: (String(launchTime)),
-          deadline: (String(deadline)),
+          launchTime: String(launchTime),
+          deadline: String(deadline),
           goalAmount: (Number(goalAmount) / 1e18).toString(),
           totalRaised: (Number(totalRaised) / 1e18).toString(),
         };
       })
     );
 
-    return NextResponse.json({ campaigns });
+    // Fetch all campaigns from the database
+    const dbCampaigns = await prisma.campaign.findMany();
+
+    // Combine the data based on matching creator address and owner
+    const combinedCampaigns: CombinedCampaignData[] = onChainCampaigns.map(onChainCampaign => {
+      const dbCampaign = dbCampaigns.find(
+        db => db.campaignAddress?.toLowerCase() === onChainCampaign.address.toLowerCase()
+      );
+
+      if (!dbCampaign) {
+        return {
+          ...onChainCampaign,
+          id: 0,
+          title: '',
+          description: '',
+          fundingGoal: onChainCampaign.goalAmount,
+          startTime: new Date(Number(onChainCampaign.launchTime) * 1000),
+          endTime: new Date(Number(onChainCampaign.deadline) * 1000),
+          creatorAddress: onChainCampaign.owner as string,
+          status: 'UNKNOWN',
+          transactionHash: null
+        } as CombinedCampaignData;
+      }
+
+      return {
+        ...onChainCampaign,
+        ...dbCampaign,
+      } as CombinedCampaignData;
+    });
+
+    return NextResponse.json({ campaigns: combinedCampaigns });
   } catch (error) {
     console.error('Error fetching campaigns:', error);
     return NextResponse.json(
