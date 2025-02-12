@@ -2,15 +2,12 @@ export interface Round {
   id: string;
   title: string;
   description: string;
-  type: 'OSS_ROUND' | 'COMMUNITY_ROUND';
+  tags: string[];
   category: string;
   matchingPool: number;
   startDate: string;
   endDate: string;
-  status: 'ACTIVE' | 'UPCOMING' | 'ENDED';
-  organization: {
-    name: string;
-    logo: string;
-  };
+  status: "ACTIVE" | "NOT_STARTED" | "CLOSED";
+  logoUrl: string;
   campaigns?: string[]; // Array of campaign addresses in this round
-} 
+}

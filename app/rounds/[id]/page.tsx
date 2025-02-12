@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,39 +16,52 @@ import { Calendar, Users, Info } from "lucide-react";
 import Link from "next/link";
 import { Round } from "@/types/round";
 import ApplyToRound from "@/components/apply-to-round";
-import { MOCK_ROUNDS, MOCK_USER_CAMPAIGNS } from "@/lib/constant";
+import { MOCK_USER_CAMPAIGNS } from "@/lib/constant";
 
-const getRound = (id: string): Round | null => {
-  const round = MOCK_ROUNDS.find((r: Round) => r.id === id);
-  if (!round) return null;
-  return round;
-};
-
-export default async function RoundPage({
+export default function RoundPage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }) {
-  const round = getRound((await params).id);
+  const [round, setRound] = useState<Round | null>(null);
 
-  if (!round) {
-    notFound();
-  }
+  useEffect(() => {
+    const getRound = async () => {
+      const { id } = await params; // Get the ID from the URL
+      if (id) {
+        const fetchRound = async () => {
+          const response = await fetch(`/api/rounds/${id}`); // Call the API route
+          if (response.ok) {
+            const data = await response.json();
+            setRound(data); // Update state with fetched round
+          } else {
+            notFound(); // Handle not found
+          }
+        };
+
+        fetchRound(); // Call the fetch function
+      }
+    };
+
+    getRound();
+  }, [params]);
+
+  if (!round) return <div>Loading...</div>; // Loading state
 
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-4">
           <Image
-            src={round.organization.logo}
-            alt={round.organization.name}
+            src={round.logoUrl}
+            alt={round.title}
             width={48}
             height={48}
             className="rounded-full"
           />
           <div>
             <h1 className="text-4xl font-bold">{round.title}</h1>
-            <p className="text-gray-600">{round.organization.name}</p>
+            <p className="text-gray-600">{round.title}</p>
           </div>
         </div>
 
@@ -85,14 +101,20 @@ export default async function RoundPage({
                     <Info className="h-5 w-5 mt-0.5 text-gray-500" />
                     <div>
                       <h4 className="font-medium">Project Requirements</h4>
-                      <p className="text-gray-600">Your project must be open source and align with the round&apos;s goals.</p>
+                      <p className="text-gray-600">
+                        Your project must be open source and align with the
+                        round&apos;s goals.
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <Users className="h-5 w-5 mt-0.5 text-gray-500" />
                     <div>
                       <h4 className="font-medium">Team Requirements</h4>
-                      <p className="text-gray-600">Teams must have a proven track record or strong potential in the space.</p>
+                      <p className="text-gray-600">
+                        Teams must have a proven track record or strong
+                        potential in the space.
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -103,13 +125,18 @@ export default async function RoundPage({
               <Card>
                 <CardHeader>
                   <CardTitle>Participating Projects</CardTitle>
-                  <CardDescription>Projects that have been accepted into this round</CardDescription>
+                  <CardDescription>
+                    Projects that have been accepted into this round
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {round.campaigns?.length ? (
                     <div className="space-y-4">
                       {round.campaigns.map((campaignId: string) => (
-                        <Link key={campaignId} href={`/campaigns/${campaignId}`}>
+                        <Link
+                          key={campaignId}
+                          href={`/campaigns/${campaignId}`}
+                        >
                           <div className="p-4 hover:bg-gray-50 rounded-lg transition-colors">
                             Campaign {campaignId}
                           </div>
@@ -117,7 +144,9 @@ export default async function RoundPage({
                       ))}
                     </div>
                   ) : (
-                    <p className="text-gray-600">No projects have joined this round yet.</p>
+                    <p className="text-gray-600">
+                      No projects have joined this round yet.
+                    </p>
                   )}
                 </CardContent>
               </Card>
@@ -132,13 +161,16 @@ export default async function RoundPage({
                   <div className="space-y-2">
                     <h4 className="font-medium">Matching Formula</h4>
                     <p className="text-gray-600">
-                      This round uses quadratic funding to determine matching amounts. The more individual contributors a project has, the higher their matching amount will be.
+                      This round uses quadratic funding to determine matching
+                      amounts. The more individual contributors a project has,
+                      the higher their matching amount will be.
                     </p>
                   </div>
                   <div className="space-y-2">
                     <h4 className="font-medium">Distribution</h4>
                     <p className="text-gray-600">
-                      Funds will be distributed within 2 weeks after the round ends.
+                      Funds will be distributed within 2 weeks after the round
+                      ends.
                     </p>
                   </div>
                 </CardContent>
@@ -155,15 +187,22 @@ export default async function RoundPage({
             <CardContent className="space-y-6">
               <div>
                 <p className="text-sm text-gray-500 mb-1">Matching Pool</p>
-                <p className="text-2xl font-bold">{round.matchingPool.toLocaleString()} USDC</p>
+                <p className="text-2xl font-bold">
+                  {round.matchingPool.toLocaleString()} USDC
+                </p>
               </div>
 
               <div>
                 <p className="text-sm text-gray-500 mb-1">Status</p>
-                <span className={`text-sm px-2 py-1 rounded-full ${round.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-                    round.status === 'UPCOMING' ? 'bg-blue-100 text-blue-800' :
-                      'bg-gray-100 text-gray-800'
-                  }`}>
+                <span
+                  className={`text-sm px-2 py-1 rounded-full ${
+                    round.status === "ACTIVE"
+                      ? "bg-green-100 text-green-800"
+                      : round.status === "NOT_STARTED"
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-gray-100 text-gray-800"
+                  }`}
+                >
                   {round.status}
                 </span>
               </div>
@@ -197,4 +236,4 @@ export default async function RoundPage({
       </div>
     </div>
   );
-} 
+}

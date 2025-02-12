@@ -80,3 +80,24 @@ model Comment {
   @@index([campaignId])
   @@index([userAddress])
 }
+
+model Round {
+  id        Int      @id @default(autoincrement())
+  title String
+  description String
+  tags String[]
+  matchingPool Int
+  applicationStart DateTime
+  applicationClose DateTime
+  startDate DateTime @default(now())
+  endDate DateTime
+  status Status @default(ACTIVE)
+  blockchain String
+  logoUrl String
+}
+
+enum Status {
+  NOT_STARTED
+  ACTIVE
+  CLOSED
+}

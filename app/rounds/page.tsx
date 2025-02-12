@@ -1,24 +1,32 @@
-import { Metadata } from "next";
+"use client";
+
 import RoundCard from "@/components/round-card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { MOCK_ROUNDS } from "@/lib/constant";
 import Link from "next/link";
-
-export const metadata: Metadata = {
-  title: "Quadratic Funding Rounds | Akashic",
-  description: "Explore and participate in quadratic funding rounds",
-};
-
+import { useEffect, useState } from "react";
 
 export default function RoundsPage() {
+  const [rounds, setRounds] = useState([]);
+
+  useEffect(() => {
+    const fetchRounds = async () => {
+      const response = await fetch("/api/rounds");
+      const data = await response.json();
+      setRounds(data);
+    };
+
+    fetchRounds();
+  }, []);
+
   return (
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-4xl font-bold mb-2">Quadratic Funding Rounds</h1>
           <p className="text-gray-600">
-            Explore active and upcoming funding rounds to support impactful projects
+            Explore active and upcoming funding rounds to support impactful
+            initiatives
           </p>
         </div>
         <Link href="/rounds/create">
@@ -30,8 +38,8 @@ export default function RoundsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {MOCK_ROUNDS.map((round) => (
-          <RoundCard key={round.id} round={round} />
+        {rounds.map((round, index) => (
+          <RoundCard key={index} round={round} />
         ))}
       </div>
     </div>

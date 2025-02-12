@@ -54,7 +54,10 @@ interface ApplyToRoundProps {
   }>;
 }
 
-export default function ApplyToRound({ round, userCampaigns = [] }: ApplyToRoundProps) {
+export default function ApplyToRound({
+  round,
+  userCampaigns = [],
+}: ApplyToRoundProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const form = useForm<ApplicationFormData>({
@@ -85,17 +88,19 @@ export default function ApplyToRound({ round, userCampaigns = [] }: ApplyToRound
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {round.status !== 'ENDED' && (
+      {round.status !== "CLOSED" && (
         <DialogTrigger asChild>
           <Button size="lg">
-            {round.status === 'ACTIVE' ? ' Apply to Round' :
-              round.status === 'UPCOMING' ? ' Apply for Upcoming Round' :
-              'Round Ended'}
+            {round.status === "ACTIVE"
+              ? " Apply to Round"
+              : round.status === "NOT_STARTED"
+              ? " Apply for Upcoming Round"
+              : "Round Ended"}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </DialogTrigger>
       )}
-      {round.status === 'ENDED' && (
+      {round.status === "CLOSED" && (
         <Button size="lg" disabled>
           Round Ended
           <ArrowRight className="ml-2 h-4 w-4" />
@@ -105,7 +110,8 @@ export default function ApplyToRound({ round, userCampaigns = [] }: ApplyToRound
         <DialogHeader>
           <DialogTitle>Apply to {round.title}</DialogTitle>
           <DialogDescription>
-            Submit your project to be considered for this funding round. Make sure to explain how your project aligns with the round&apos;s goals.
+            Submit your project to be considered for this funding round. Make
+            sure to explain how your project aligns with the round&apos;s goals.
           </DialogDescription>
         </DialogHeader>
 
@@ -117,7 +123,10 @@ export default function ApplyToRound({ round, userCampaigns = [] }: ApplyToRound
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Select Campaign</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a campaign" />
@@ -132,7 +141,8 @@ export default function ApplyToRound({ round, userCampaigns = [] }: ApplyToRound
                     </SelectContent>
                   </Select>
                   <FormDescription>
-                    Choose which of your campaigns you want to submit to this round.
+                    Choose which of your campaigns you want to submit to this
+                    round.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -152,7 +162,8 @@ export default function ApplyToRound({ round, userCampaigns = [] }: ApplyToRound
                     />
                   </FormControl>
                   <FormDescription>
-                    Explain how your project aligns with the round&apos;s goals and why you should be considered.
+                    Explain how your project aligns with the round&apos;s goals
+                    and why you should be considered.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -172,7 +183,8 @@ export default function ApplyToRound({ round, userCampaigns = [] }: ApplyToRound
                     />
                   </FormControl>
                   <FormDescription>
-                    Describe the concrete outcomes and impact you expect to achieve with the funding.
+                    Describe the concrete outcomes and impact you expect to
+                    achieve with the funding.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -180,7 +192,11 @@ export default function ApplyToRound({ round, userCampaigns = [] }: ApplyToRound
             />
 
             <div className="flex justify-end gap-4">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+              >
                 Cancel
               </Button>
               <Button type="submit">Submit Application</Button>
@@ -190,4 +206,4 @@ export default function ApplyToRound({ round, userCampaigns = [] }: ApplyToRound
       </DialogContent>
     </Dialog>
   );
-} 
+}
