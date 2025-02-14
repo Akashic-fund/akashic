@@ -8,24 +8,25 @@ datasource db {
 }
 
 model Campaign {
-  id              Int             @id @default(autoincrement())
+  id              Int              @id @default(autoincrement())
   title           String
   description     String
   fundingGoal     String
   startTime       DateTime
   endTime         DateTime
   creatorAddress  String
-  status          String          @default("draft")
+  status          String           @default("draft")
   transactionHash String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  campaignAddress String?         @unique
-  slug            String          @unique
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  campaignAddress String?          @unique
+  slug            String           @unique
   location        String?
   treasuryAddress String?
   images          CampaignImage[]
   payments        Payment[]
   comments        Comment[]
+  RoundCampaigns  RoundCampaigns[]
 
   @@index([creatorAddress])
 }
@@ -47,32 +48,32 @@ model User {
 }
 
 model Payment {
-  id              Int       @id @default(autoincrement())
-  amount          String    // Store as string to preserve precision
-  token           String    // e.g., "USDC"
-  status          String    @default("pending") // pending, confirmed, failed
+  id              Int      @id @default(autoincrement())
+  amount          String // Store as string to preserve precision
+  token           String // e.g., "USDC"
+  status          String   @default("pending") // pending, confirmed, failed
   transactionHash String?
-  isAnonymous     Boolean   @default(false)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  isAnonymous     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
   // Relations
-  campaignId      Int
-  campaign        Campaign  @relation(fields: [campaignId], references: [id])
-  userId          Int
-  user            User      @relation(fields: [userId], references: [id])
+  campaignId Int
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
 
   @@index([campaignId])
   @@index([userId])
 }
 
 model Comment {
-  id        Int      @id @default(autoincrement())
-  content   String
+  id          Int      @id @default(autoincrement())
+  content     String
   userAddress String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   // Relations
   campaignId Int
   campaign   Campaign @relation(fields: [campaignId], references: [id])
@@ -82,22 +83,31 @@ model Comment {
 }
 
 model Round {
-  id        Int      @id @default(autoincrement())
-  title String
-  description String
-  tags String[]
-  matchingPool Int
+  id               Int              @id @default(autoincrement())
+  title            String
+  description      String
+  tags             String[]
+  matchingPool     Int
   applicationStart DateTime
   applicationClose DateTime
-  startDate DateTime @default(now())
-  endDate DateTime
-  status Status @default(ACTIVE)
-  blockchain String
-  logoUrl String
+  startDate        DateTime         @default(now())
+  endDate          DateTime
+  status           Status           @default(ACTIVE)
+  blockchain       String
+  logoUrl          String
+  RoundCampaigns   RoundCampaigns[]
 }
 
 enum Status {
   NOT_STARTED
   ACTIVE
   CLOSED
+}
+
+model RoundCampaigns {
+  id         Int      @id @default(autoincrement())
+  roundId    Int
+  round      Round    @relation(fields: [roundId], references: [id])
+  campaignId Int
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
 }
