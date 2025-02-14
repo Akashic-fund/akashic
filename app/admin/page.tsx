@@ -706,6 +706,11 @@ export default function AdminPage() {
                         >
                           Approve Campaign
                         </Button>
+                      </>
+                    )}
+
+                    {campaign.status == "active" && (
+                      <>
                         <Button
                           onClick={() => toggleDropdown(campaign.id)}
                           className="w-full mt-4 bg-blue-600 hover:bg-blue-700"
