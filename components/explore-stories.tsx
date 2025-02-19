@@ -40,6 +40,7 @@ export function ExploreStories() {
   const [showCollectionModal, setShowCollectionModal] = useState(false)
   const [selectedStory, setSelectedStory] = useState<Story | null>(null)
   const [selectedCollection, setSelectedCollection] = useState<string>('')
+  const [searchTerm, setSearchTerm] = useState<string>('')
   const { addToCollection } = useCollection()
 
   const categories: Category[] = [
@@ -70,7 +71,13 @@ export function ExploreStories() {
             <div className="flex items-start gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-                <Input className="w-[300px] pl-10 rounded-xl" placeholder="Search Stories" type="search" />
+                <Input 
+                  className="w-[300px] pl-10 rounded-xl" 
+                  placeholder="Search Stories" 
+                  type="search"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -127,7 +134,7 @@ export function ExploreStories() {
                 ))}
               </div>
 
-              <CampaignList />
+              <CampaignList searchTerm={searchTerm} />
             </>
           )}
         </main>

@@ -17,7 +17,11 @@ import { useInfiniteCampaigns } from "@/lib/hooks/useCampaigns";
 import { useInView } from "react-intersection-observer";
 import { useEffect } from "react";
 
-export default function CampaignList() {
+interface CampaignListProps {
+  searchTerm: string;
+}
+
+export default function CampaignList({ searchTerm }: CampaignListProps) {
   const { ref, inView } = useInView();
   const {
     data,
@@ -37,6 +41,19 @@ export default function CampaignList() {
   const formatDate = (timestamp: string) => {
     return new Date(parseInt(timestamp) * 1000).toLocaleDateString();
   };
+
+  // Filter campaigns based on search term
+  const filteredCampaigns = data?.pages.map(page => ({
+    ...page,
+    campaigns: page.campaigns.filter(campaign => {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        campaign.title?.toLowerCase().includes(searchLower) ||
+        campaign.description?.toLowerCase().includes(searchLower) ||
+        campaign.location?.toLowerCase().includes(searchLower)
+      );
+    })
+  }));
 
   if (loading && !data) {
     return (
@@ -70,7 +87,7 @@ export default function CampaignList() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-        {data?.pages.map((page) =>
+        {filteredCampaigns?.map((page) =>
           page.campaigns.map((campaign: Campaign) => (
             <Card key={campaign.address} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col h-full">
               <div className="flex-1">
