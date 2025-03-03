@@ -11,6 +11,14 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'asset.captureapp.xyz',
+      },
+      {
+        protocol: 'https',
+        hostname: 'dia-cdn.numbersprotocol.io',
+      },
     ],
   },
 };

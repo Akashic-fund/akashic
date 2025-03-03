@@ -13,6 +13,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@numbersprotocol/nit": "^1.6.1",
     "@prisma/client": "^6.1.0",
     "@privy-io/react-auth": "^2.0.0",
     "@privy-io/wagmi": "^1.0.1",
@@ -34,9 +35,13 @@
     "class-variance-authority": "^0.7.0",
     "cloudinary": "^2.5.1",
     "clsx": "^2.1.1",
+    "dns": "^0.2.2",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.13.5",
     "ethers": "5.7.2",
     "husky": "^9.1.7",
     "lucide-react": "^0.460.0",
+    "mime": "^4.0.6",
     "next": "^15.1.3",
     "next-cloudinary": "^6.16.0",
     "prisma": "^6.1.0",
