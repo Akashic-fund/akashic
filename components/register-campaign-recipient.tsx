@@ -105,6 +105,7 @@ export function RegisterCampaignRecipient({
     }
 
     console.log("roundId:", roundId, "router:", router, "isRecipientRegistered:", isRecipientRegistered)
+
     // function logTransactionData(tx: ethers.providers.TransactionRequest) {
     //     console.log("=== TRANSACTION DATA DETAILS ===");
     //     console.log("To:", tx.to);
@@ -162,67 +163,60 @@ export function RegisterCampaignRecipient({
         let pendingRecordCreated = false
 
         try {
-            // --- Step 1: Initial Database Registration (PENDING status) ---
-            console.log("Attempting initial database registration...")
-            const initialRegisterResponse = await fetch("/api/rounds/recipients/register", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    campaignId,
-                    roundId,
-                    recipientAddress: campaignWalletAddress,
-                    walletAddress: accountAddress, // Submitter's address
-                    // No txHash or onchainRecipientId yet
-                }),
-            })
+            // // --- Step 1: Initial Database Registration (PENDING status) ---
+            // console.log("Attempting initial database registration...")
+            // const initialRegisterResponse = await fetch("/api/rounds/recipients/register", {
+            //     method: "POST",
+            //     headers: { "Content-Type": "application/json" },
+            //     body: JSON.stringify({
+            //         campaignId,
+            //         roundId,
+            //         recipientAddress: campaignWalletAddress,
+            //         walletAddress: accountAddress, // Submitter's address
+            //         // No txHash or onchainRecipientId yet
+            //     }),
+            // })
 
-            const initialRegisterData = await initialRegisterResponse.json()
+            // const initialRegisterData = await initialRegisterResponse.json()
 
-            if (!initialRegisterResponse.ok || !initialRegisterData.success) {
-                // Handle specific case where it might already be pending or approved
-                if (initialRegisterData.message?.includes("already exists")) {
-                    toast({
-                        title: "Registration Pending or Complete",
-                        description: initialRegisterData.message || "This campaign is already registered or pending approval for this round.",
-                        variant: "default"
-                    })
-                    // Check on-chain status just in case DB is out of sync
-                    const alreadyRegisteredOnChain = await isRecipientRegistered(poolId, campaignWalletAddress);
-                    if (alreadyRegisteredOnChain) {
-                        console.log("Confirmed already registered on-chain.")
-                        // Optionally trigger a DB update here if needed, or just refresh
-                        if (onComplete) onComplete()
-                        else router.refresh()
-                        if (showDialog) setIsOpen(false)
-                    } else {
-                        // It exists in DB but not on-chain? Could be pending or failed previously.
-                        // For now, just stop the process. More sophisticated retry logic could be added.
-                        console.warn("Recipient exists in DB but not confirmed on-chain.")
-                    }
-                } else {
-                    toast({
-                        title: "Database Registration Failed",
-                        description: initialRegisterData.error || "Could not save initial registration request.",
-                        variant: "destructive",
-                    })
-                }
-                setIsRegistering(false) // Stop the process if initial DB save fails
-                return
-            }
+            // if (!initialRegisterResponse.ok || !initialRegisterData.success) {
+            //     // Handle specific case where it might already be pending or approved
+            //     if (initialRegisterData.message?.includes("already exists")) {
+            //         toast({
+            //             title: "Registration Pending or Complete",
+            //             description: initialRegisterData.message || "This campaign is already registered or pending approval for this round.",
+            //             variant: "default"
+            //         })
+            //         // Check on-chain status just in case DB is out of sync
+            //         const alreadyRegisteredOnChain = await isRecipientRegistered(poolId, campaignWalletAddress);
+            //         if (alreadyRegisteredOnChain) {
+            //             console.log("Confirmed already registered on-chain.")
+            //             // Optionally trigger a DB update here if needed, or just refresh
+            //             if (onComplete) onComplete()
+            //             else router.refresh()
+            //             if (showDialog) setIsOpen(false)
+            //         } else {
+            //             // It exists in DB but not on-chain? Could be pending or failed previously.
+            //             // For now, just stop the process. More sophisticated retry logic could be added.
+            //             console.warn("Recipient exists in DB but not confirmed on-chain.")
+            //         }
+            //     } else {
+            //         toast({
+            //             title: "Database Registration Failed",
+            //             description: initialRegisterData.error || "Could not save initial registration request.",
+            //             variant: "destructive",
+            //         })
+            //     }
+            //     setIsRegistering(false) // Stop the process if initial DB save fails
+            //     return
+            // }
 
             pendingRecordCreated = true
-            console.log("Initial database registration successful (PENDING).")
+            console.log("Initial database registration (PENDING).")
             toast({
                 title: "Registration Initiated",
                 description: "Submitting transaction to the blockchain...",
             })
-
-            // remove it when making on chain transaction - close the dialog after 3 seconds if it's being shown
-            if (showDialog) {
-                setTimeout(() => {
-                    setIsOpen(false)
-                }, 3000) // 3000 milliseconds = 3 seconds
-            }
 
             // --- Step 2: Blockchain Transaction ---
             console.log("Preparing registration data for blockchain...")
@@ -269,20 +263,20 @@ export function RegisterCampaignRecipient({
             console.log("Preparing to send transaction...")
 
             // make transaction
-            // const tx = await alloContract.registerRecipient(
-            //     poolId,
-            //     recipientAddresses,
-            //     outerData,
-            //     { gasLimit: 500000 }
-            //     // { gasLimit: gasEstimate ? gasEstimate.mul(120).div(100) : 500000 }
-            // )
+            const tx = await alloContract.registerRecipient(
+                poolId,
+                recipientAddresses,
+                outerData,
+                { gasLimit: 500000 }
+                // { gasLimit: gasEstimate ? gasEstimate.mul(120).div(100) : 500000 }
+            )
 
-            // console.log("tx alloContract", tx)
-            // const response = await signer.sendTransaction(tx)
-            // txHash = response.hash
-            // console.log(`Transaction sent for alloContract.registerRecipient: ${txHash}. Waiting for confirmation...`)
+            console.log("tx alloContract", tx)
+            const response = await signer.sendTransaction(tx)
+            txHash = response.hash
+            console.log(`Transaction sent for alloContract.registerRecipient: ${txHash}. Waiting for confirmation...`)
 
-            txHash = "0x0000 " //tx.hash 
+            txHash = tx.hash 
             console.log(`Transaction sent with hash: ${txHash}. Waiting for confirmation...`)
 
             toast({
@@ -291,8 +285,8 @@ export function RegisterCampaignRecipient({
             })
 
             console.log("Waiting for transaction receipt...")
-            // const receipt = await tx.wait()
-            // console.log("Transaction Receipt:", receipt)
+            const receipt = await tx.wait()
+            console.log("Transaction Receipt:", receipt)
 
             // --- Step 3: Update Database with Confirmation ---
             // if (receipt && receipt.status === 1) {
