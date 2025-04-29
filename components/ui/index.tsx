@@ -15,3 +15,6 @@ export { Progress } from './progress';
 export { Skeleton } from './skeleton';
 export { Table, TableBody, TableCell, TableHead, TableRow } from './table';
 export { Avatar, AvatarFallback, AvatarImage } from './avatar';
+export { Separator } from './seperator';
+export { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from './form';
+

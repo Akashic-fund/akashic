@@ -23,7 +23,6 @@ export const SideBar = () => {
     const { user, logout, login, authenticated } = usePrivy()
     const showRounds = useFeatureFlag('ENABLE_ROUNDS')
 
-    console.log("user", user)
     const shortenAddress = (address: string) => {
         return `${address.slice(0, 6)}...${address.slice(-4)}`
     }
@@ -86,10 +85,10 @@ export const SideBar = () => {
                 </nav>
                 <div className="border-t p-2">
                     <Link
-                        href="/settings"
+                        href="/profile"
                         className={cn(
                             "flex items-center justify-center rounded-lg px-3 py-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900",
-                            pathname === "/settings" && "bg-green-200 text-gray-900",
+                            pathname === "/profile" && "bg-green-200 text-gray-900",
                             isOpen ? "gap-3" : "flex-col items-center"
                         )}
                     >
@@ -105,7 +104,7 @@ export const SideBar = () => {
                                     "overflow-hidden transition-all duration-300 ease-in-out text-sm text-gray-700",
                                 )}
                             >
-                                Settings
+                                Profile
                             </span>
                         )}
                     </Link>

@@ -8,29 +8,29 @@ datasource db {
 }
 
 model Campaign {
-  id              Int              @id @default(autoincrement())
+  id              Int                  @id @default(autoincrement())
   title           String
   description     String
   fundingGoal     String
   startTime       DateTime
   endTime         DateTime
   creatorAddress  String
-  status          String           @default("draft")
+  status          String               @default("draft")
   transactionHash String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  campaignAddress String?          @unique
-  slug            String           @unique
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  campaignAddress String?              @unique
+  slug            String               @unique
   location        String?
   treasuryAddress String?
   category        String?
+  collections     CampaignCollection[]
   images          CampaignImage[]
   updates         CampaignUpdate[]
   comments        Comment[]
+  favorites       Favorite[]
   payments        Payment[]
   RoundCampaigns  RoundCampaigns[]
-  collections     CampaignCollection[]
-  favorites       Favorite[]
 
   @@index([creatorAddress])
   @@index([category])
@@ -45,12 +45,20 @@ model CampaignImage {
 }
 
 model User {
-  id        Int       @id @default(autoincrement())
-  address   String    @unique
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  payments  Payment[]
-  collections Collection[]
+  id               Int             @id @default(autoincrement())
+  address          String          @unique
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  bridgeCustomerId String?
+  email            String?
+  username         String?         @unique
+  firstName        String?
+  lastName         String?
+  recipientWallet  String?
+  isKycCompleted   Boolean?        @default(false)
+  collections      Collection[]
+  payments         Payment[]
+  paymentMethods   PaymentMethod[]
 }
 
 model Payment {
@@ -64,11 +72,30 @@ model Payment {
   updatedAt       DateTime @updatedAt
   campaignId      Int
   userId          Int
+  externalId      String?
+  metadata        Json?
+  provider        String?
   campaign        Campaign @relation(fields: [campaignId], references: [id])
   user            User     @relation(fields: [userId], references: [id])
 
   @@index([campaignId])
   @@index([userId])
+  @@index([externalId])
+}
+
+model PaymentMethod {
+  id         Int      @id @default(autoincrement())
+  provider   String
+  externalId String
+  type       String
+  userId     Int
+  details    Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([externalId])
 }
 
 model Comment {
@@ -97,26 +124,12 @@ model CampaignUpdate {
   @@index([campaignId])
 }
 
-enum RecipientStatus {
-  PENDING   // Initial state, DB record created, awaiting transaction
-  APPROVED  // Transaction successful, DB updated
-  REJECTED  // Manually rejected by admin
-  // Add other statuses like FAILED if needed
-}
-
 model Round {
   id               Int              @id @default(autoincrement())
-  poolId           BigInt?          @unique
-  strategyAddress  String
-  profileId        String
-  managerAddress   String
-  transactionHash  String?          @unique
   title            String
   description      String
   tags             String[]         @default([])
   matchingPool     Decimal
-  tokenAddress     String
-  tokenDecimals    Int
   applicationStart DateTime
   applicationClose DateTime
   startDate        DateTime
@@ -124,6 +137,13 @@ model Round {
   blockchain       String
   logoUrl          String?
   createdAt        DateTime         @default(now())
+  managerAddress   String
+  poolId           BigInt?          @unique
+  profileId        String
+  strategyAddress  String
+  tokenAddress     String
+  tokenDecimals    Int
+  transactionHash  String?          @unique
   updatedAt        DateTime         @updatedAt
   roundCampaigns   RoundCampaigns[]
 }
@@ -132,34 +152,27 @@ model RoundCampaigns {
   id                       Int             @id @default(autoincrement())
   roundId                  Int
   campaignId               Int
-  status                   RecipientStatus @default(PENDING)
+  reviewedAt               DateTime?
+  onchainRecipientId       String?
   recipientAddress         String?
   submittedByWalletAddress String?
   txHash                   String?
-  onchainRecipientId       String?
-  reviewedAt               DateTime?
+  status                   RecipientStatus @default(PENDING)
   Campaign                 Campaign        @relation(fields: [campaignId], references: [id])
   Round                    Round           @relation(fields: [roundId], references: [id])
 
   @@unique([roundId, campaignId])
 }
 
-enum Status {
-  NOT_STARTED
-  ACTIVE
-  CLOSED
-}
-
 model Collection {
-  id          String   @id @default(cuid())
+  id          String               @id @default(cuid())
   name        String
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
   userId      String
-  user        User     @relation(fields: [userId], references: [address])
-
-  campaigns CampaignCollection[]
+  campaigns   CampaignCollection[]
+  user        User                 @relation(fields: [userId], references: [address])
 
   @@unique([userId, name])
   @@index([userId])
@@ -168,10 +181,9 @@ model Collection {
 model CampaignCollection {
   campaignId   Int
   collectionId String
-  assignedAt   DateTime @default(now())
-
-  campaign   Campaign   @relation(fields: [campaignId], references: [id])
-  collection Collection @relation(fields: [collectionId], references: [id])
+  assignedAt   DateTime   @default(now())
+  campaign     Campaign   @relation(fields: [campaignId], references: [id])
+  collection   Collection @relation(fields: [collectionId], references: [id])
 
   @@id([campaignId, collectionId])
 }
@@ -188,3 +200,14 @@ model Favorite {
   @@index([campaignId])
 }
 
+enum RecipientStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum Status {
+  NOT_STARTED
+  ACTIVE
+  CLOSED
+}

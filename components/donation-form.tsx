@@ -325,6 +325,8 @@ export default function DonationForm({ campaign }: DonationFormProps) {
     try {
       setIsProcessing(true)
       setError(null)
+      console.log("process.env.NEXT_PUBLIC_CROWDSPLIT_CLIENT_ID", process.env.NEXT_PUBLIC_CROWDSPLIT_CLIENT_ID)
+      console.log("process.env.NEXT_PUBLIC_CROWDSPLIT_CLIENT_SECRET", process.env.NEXT_PUBLIC_CROWDSPLIT_CLIENT_SECRET)
       
       // Get access token
       const tokenResponse = await fetch('/api/auth/token', {
@@ -336,6 +338,7 @@ export default function DonationForm({ campaign }: DonationFormProps) {
           grant_type: "client_credentials"
         })
       });
+      console.log("tokenResponse", tokenResponse)
       
       if (!tokenResponse.ok) {
         const error = await tokenResponse.json();
