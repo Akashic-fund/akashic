@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
+import * as Sentry from "@sentry/nextjs";
 
 export default function ErrorPage({
   error,
@@ -14,6 +15,7 @@ export default function ErrorPage({
 }) {
   useEffect(() => {
     console.error(error);
+    Sentry.captureException(error);
   }, [error]);
 
   const isServerError = error?.digest || error.message?.includes('server');
