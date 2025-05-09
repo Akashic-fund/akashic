@@ -11,18 +11,21 @@ export const chainConfig = {
     hex: `0x${celoAlfajores.id.toString(16)}`,
     decimal: celoAlfajores.id,
   },
-  
+
   // Chain details derived from wagmi
   name: celoAlfajores.name,
   nativeCurrency: celoAlfajores.nativeCurrency,
-  
+
   // Custom values not from wagmi
-  rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || celoAlfajores.rpcUrls.default.http[0],
-  blockExplorerUrl: celoAlfajores.blockExplorers?.default?.url || 'https://alfajores.celoscan.io/',
-  
+  rpcUrl:
+    process.env.NEXT_PUBLIC_RPC_URL || celoAlfajores.rpcUrls.default.http[0],
+  blockExplorerUrl:
+    celoAlfajores.blockExplorers?.default?.url ||
+    'https://alfajores.celoscan.io/',
+
   // Reference to the actual chain object for provider configurations
   defaultChain: celoAlfajores,
-  
+
   // Helper methods
   getAddChainParams() {
     return {
@@ -30,9 +33,9 @@ export const chainConfig = {
       chainName: this.name,
       nativeCurrency: this.nativeCurrency,
       rpcUrls: [this.rpcUrl],
-      blockExplorerUrls: [this.blockExplorerUrl]
+      blockExplorerUrls: [this.blockExplorerUrl],
     };
-  }
+  },
 };
 
-export default chainConfig; 
+export default chainConfig;

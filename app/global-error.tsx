@@ -12,10 +12,12 @@ export default function GlobalError({
   reset: () => void;
 }) {
   const isServerError = error?.digest || error.message?.includes('server');
-  const errorTitle = isServerError ? '500 - Server Error' : 'Something went wrong!';
-  const errorMessage = isServerError 
-    ? 'Sorry, something went wrong on our server.' 
-    : (error.message || 'An unexpected error occurred');
+  const errorTitle = isServerError
+    ? '500 - Server Error'
+    : 'Something went wrong!';
+  const errorMessage = isServerError
+    ? 'Sorry, something went wrong on our server.'
+    : error.message || 'An unexpected error occurred';
 
   return (
     <html>
@@ -24,7 +26,7 @@ export default function GlobalError({
           <div className="mx-auto max-w-md text-center">
             <h1 className="mb-4 text-4xl font-bold">{errorTitle}</h1>
             <p className="mb-8 text-muted-foreground">{errorMessage}</p>
-            <div className="flex gap-4 justify-center">
+            <div className="flex justify-center gap-4">
               <Button onClick={reset}>
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Try again

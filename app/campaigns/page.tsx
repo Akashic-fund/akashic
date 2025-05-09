@@ -1,5 +1,5 @@
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default function CampaignsPage() {
   return (
@@ -9,6 +9,5 @@ export default function CampaignsPage() {
         <Button>View Demo Campaign</Button>
       </Link>
     </div>
-  )
+  );
 }
-

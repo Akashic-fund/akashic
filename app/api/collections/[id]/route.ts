@@ -5,13 +5,13 @@ import { CampaignImage } from '@/types/campaign';
 // Get a specific collection
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     // Get user address from query params
     const { searchParams } = new URL(request.url);
     const userAddress = searchParams.get('userAddress');
-    
+
     // Find the collection without requiring user ownership
     const collection = await prisma.collection.findUnique({
       where: {
@@ -22,16 +22,19 @@ export async function GET(
           include: {
             campaign: {
               include: {
-                images: true
-              }
-            }
-          }
-        }
+                images: true,
+              },
+            },
+          },
+        },
       },
     });
 
     if (!collection) {
-      return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Collection not found' },
+        { status: 404 },
+      );
     }
 
     // Check if the user is the owner
@@ -41,7 +44,7 @@ export async function GET(
     const collectionWithDetails = {
       ...collection,
       isOwner,
-      items: collection.campaigns.map(campaignCollection => {
+      items: collection.campaigns.map((campaignCollection) => {
         const campaign = campaignCollection.campaign;
         return {
           itemId: campaign.campaignAddress || String(campaign.id),
@@ -51,23 +54,28 @@ export async function GET(
             title: campaign.title,
             description: campaign.description,
             slug: campaign.slug,
-            image: campaign.images.find((img: CampaignImage) => img.isMainImage)?.imageUrl || '/images/placeholder.svg',
-          }
+            image:
+              campaign.images.find((img: CampaignImage) => img.isMainImage)
+                ?.imageUrl || '/images/placeholder.svg',
+          },
         };
-      })
+      }),
     };
 
     return NextResponse.json({ collection: collectionWithDetails });
   } catch (error) {
     console.error('Error fetching collection:', error);
-    return NextResponse.json({ error: 'Failed to fetch collection' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch collection' },
+      { status: 500 },
+    );
   }
 }
 
 // Update a collection
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -75,7 +83,10 @@ export async function PUT(
     const { name, description, userAddress } = body;
 
     if (!userAddress) {
-      return NextResponse.json({ error: 'User address is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'User address is required' },
+        { status: 400 },
+      );
     }
 
     // Check if collection exists and belongs to the user
@@ -87,7 +98,13 @@ export async function PUT(
     });
 
     if (!existingCollection) {
-      return NextResponse.json({ error: 'Collection not found or you do not have permission to edit it' }, { status: 404 });
+      return NextResponse.json(
+        {
+          error:
+            'Collection not found or you do not have permission to edit it',
+        },
+        { status: 404 },
+      );
     }
 
     // Check if new name conflicts with another collection
@@ -101,7 +118,10 @@ export async function PUT(
       });
 
       if (nameConflict) {
-        return NextResponse.json({ error: 'Collection with this name already exists' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Collection with this name already exists' },
+          { status: 400 },
+        );
       }
     }
 
@@ -111,30 +131,39 @@ export async function PUT(
       },
       data: {
         name: name || existingCollection.name,
-        description: description !== undefined ? description : existingCollection.description,
+        description:
+          description !== undefined
+            ? description
+            : existingCollection.description,
       },
     });
 
     return NextResponse.json({ collection: updatedCollection });
   } catch (error) {
     console.error('Error updating collection:', error);
-    return NextResponse.json({ error: 'Failed to update collection' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to update collection' },
+      { status: 500 },
+    );
   }
 }
 
 // Delete a collection
 export async function DELETE(
-  request: NextRequest, 
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    // Get user address from query params   
+    // Get user address from query params
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const userAddress = searchParams.get('userAddress');
-    
+
     if (!userAddress) {
-      return NextResponse.json({ error: 'User address is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'User address is required' },
+        { status: 400 },
+      );
     }
 
     try {
@@ -154,7 +183,7 @@ export async function DELETE(
             // No name field in the schema
           },
         });
-        console.log("User created:", user);
+        console.log('User created:', user);
       }
 
       // Check if collection exists and belongs to the user
@@ -166,7 +195,13 @@ export async function DELETE(
       });
 
       if (!existingCollection) {
-        return NextResponse.json({ error: 'Collection not found or you do not have permission to delete it' }, { status: 404 });
+        return NextResponse.json(
+          {
+            error:
+              'Collection not found or you do not have permission to delete it',
+          },
+          { status: 404 },
+        );
       }
 
       // First delete all campaign associations
@@ -186,16 +221,25 @@ export async function DELETE(
       return NextResponse.json({ success: true });
     } catch (dbError) {
       console.error('Database error deleting collection:', dbError);
-      return NextResponse.json({ 
-        error: 'Failed to delete collection', 
-        details: dbError instanceof Error ? dbError.message : 'Unknown database error' 
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: 'Failed to delete collection',
+          details:
+            dbError instanceof Error
+              ? dbError.message
+              : 'Unknown database error',
+        },
+        { status: 500 },
+      );
     }
   } catch (error) {
     console.error('Error deleting collection:', error);
-    return NextResponse.json({ 
-      error: 'Failed to delete collection',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: 'Failed to delete collection',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 },
+    );
   }
-} 
+}

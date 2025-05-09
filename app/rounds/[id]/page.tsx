@@ -1,34 +1,34 @@
-import { notFound } from "next/navigation"
-import Image from "next/image"
-import Link from "next/link"
-import { Calendar, Users, Info } from "lucide-react"
-import { type Address } from "viem"
+import { notFound } from 'next/navigation';
+import Image from 'next/image';
+import Link from 'next/link';
+import { Calendar, Users, Info } from 'lucide-react';
+import { type Address } from 'viem';
 
-import { Button } from "@/components/ui/button"
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ApplyToRound } from "@/components/apply-to-round"
-import { prisma } from "@/lib/prisma"
-import type { Round as PrismaRound, Campaign } from "@prisma/client"
-import { ROUND_STATUS_MAP, getRoundStatus } from "@/types/round"
-import { CheckWalletServer } from "@/components/check-wallet-server"
+} from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ApplyToRound } from '@/components/apply-to-round';
+import { prisma } from '@/lib/prisma';
+import type { Round as PrismaRound, Campaign } from '@prisma/client';
+import { ROUND_STATUS_MAP, getRoundStatus } from '@/types/round';
+import { CheckWalletServer } from '@/components/check-wallet-server';
 
 interface RoundWithCampaigns extends PrismaRound {
   roundCampaigns: {
-    Campaign: Pick<Campaign, "id" | "slug" | "title">
-  }[]
+    Campaign: Pick<Campaign, 'id' | 'slug' | 'title'>;
+  }[];
 }
 
 async function getRoundData(id: string): Promise<RoundWithCampaigns | null> {
-  const roundId = parseInt(id, 10)
+  const roundId = parseInt(id, 10);
   if (isNaN(roundId)) {
-    return null
+    return null;
   }
 
   try {
@@ -47,30 +47,34 @@ async function getRoundData(id: string): Promise<RoundWithCampaigns | null> {
           },
         },
       },
-    })
-    return round
+    });
+    return round;
   } catch (error) {
-    console.error("Failed to fetch round:", error)
-    return null
+    console.error('Failed to fetch round:', error);
+    return null;
   }
 }
 
-const DEFAULT_ROUND_LOGO = "/images/fund.png"
+const DEFAULT_ROUND_LOGO = '/images/fund.png';
 
-export default async function RoundPage({ params }: { params: Promise<{ id: string }> }) {
-  const round = await getRoundData((await params).id)
+export default async function RoundPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const round = await getRoundData((await params).id);
 
   if (!round) {
-    notFound()
+    notFound();
   }
 
-  const roundStatusKey = getRoundStatus(round)
-  const roundStatus = ROUND_STATUS_MAP[roundStatusKey]
+  const roundStatusKey = getRoundStatus(round);
+  const roundStatus = ROUND_STATUS_MAP[roundStatusKey];
 
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8">
-        <div className="flex flex-col items-start gap-4 mb-4 md:flex-row md:items-center">
+        <div className="mb-4 flex flex-col items-start gap-4 md:flex-row md:items-center">
           <Image
             src={round.logoUrl || DEFAULT_ROUND_LOGO}
             alt={`${round.title} logo`}
@@ -84,13 +88,13 @@ export default async function RoundPage({ params }: { params: Promise<{ id: stri
             </h1>
           </div>
           <span
-            className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${roundStatus.color}`}
+            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${roundStatus.color}`}
           >
             {roundStatus.text}
           </span>
         </div>
 
-        <div className="flex flex-wrap gap-2 mb-8">
+        <div className="mb-8 flex flex-wrap gap-2">
           <ApplyToRound
             roundId={round.id}
             roundTitle={round.title}
@@ -99,23 +103,23 @@ export default async function RoundPage({ params }: { params: Promise<{ id: stri
             strategyAddress={round.strategyAddress as Address}
             roundStatusKey={roundStatusKey}
           />
-          
+
           {/* Use client component for user-specific content */}
-          <CheckWalletServer 
+          <CheckWalletServer
             poolId={BigInt(round.poolId || 0)}
             roundId={round.id}
-            strategyAddress={round.strategyAddress as Address} 
-            roundAdminAddress={round.managerAddress as Address} 
+            strategyAddress={round.strategyAddress as Address}
+            roundAdminAddress={round.managerAddress as Address}
             roundStatusKey={roundStatusKey}
           />
-          
+
           <Button variant="outline" size="lg">
             Share Round
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Tabs defaultValue="overview" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
@@ -140,7 +144,7 @@ export default async function RoundPage({ params }: { params: Promise<{ id: stri
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-start gap-3">
-                    <Info className="h-5 w-5 flex-shrink-0 mt-0.5 text-muted-foreground" />
+                    <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground" />
                     <div>
                       <h4 className="font-medium">Project Requirements</h4>
                       <p className="text-sm text-muted-foreground">
@@ -150,7 +154,7 @@ export default async function RoundPage({ params }: { params: Promise<{ id: stri
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Users className="h-5 w-5 flex-shrink-0 mt-0.5 text-muted-foreground" />
+                    <Users className="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground" />
                     <div>
                       <h4 className="font-medium">Team Requirements</h4>
                       <p className="text-sm text-muted-foreground">
@@ -178,7 +182,7 @@ export default async function RoundPage({ params }: { params: Promise<{ id: stri
                         <Link
                           key={campaign.id}
                           href={`/campaigns/${campaign.slug ?? campaign.id}`}
-                          className="block p-4 border rounded-lg hover:bg-muted transition-colors"
+                          className="block rounded-lg border p-4 transition-colors hover:bg-muted"
                         >
                           <h4 className="font-medium">{campaign.title}</h4>
                         </Link>
@@ -227,22 +231,23 @@ export default async function RoundPage({ params }: { params: Promise<{ id: stri
             </CardHeader>
             <CardContent className="space-y-5">
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">
+                <p className="mb-1 text-sm font-medium text-muted-foreground">
                   Matching Pool
                 </p>
                 <p className="text-2xl font-semibold">
                   {Number(round.matchingPool).toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
-                  })}{" "}
+                  })}{' '}
                   <span className="text-sm font-normal text-muted-foreground">
-                    {round.tokenAddress.slice(0, 6)}...{round.tokenAddress.slice(-4)}
+                    {round.tokenAddress.slice(0, 6)}...
+                    {round.tokenAddress.slice(-4)}
                   </span>
                 </p>
               </div>
 
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-2">
+                <p className="mb-2 text-sm font-medium text-muted-foreground">
                   Key Dates
                 </p>
                 <div className="space-y-3">
@@ -251,9 +256,10 @@ export default async function RoundPage({ params }: { params: Promise<{ id: stri
                     <div>
                       <p className="text-sm font-medium">Applications Open</p>
                       <p className="text-sm text-muted-foreground">
-                        {new Date(
-                          round.applicationStart
-                        ).toLocaleDateString(undefined, { dateStyle: "medium" })}
+                        {new Date(round.applicationStart).toLocaleDateString(
+                          undefined,
+                          { dateStyle: 'medium' },
+                        )}
                       </p>
                     </div>
                   </div>
@@ -262,9 +268,10 @@ export default async function RoundPage({ params }: { params: Promise<{ id: stri
                     <div>
                       <p className="text-sm font-medium">Applications Close</p>
                       <p className="text-sm text-muted-foreground">
-                        {new Date(
-                          round.applicationClose
-                        ).toLocaleDateString(undefined, { dateStyle: "medium" })}
+                        {new Date(round.applicationClose).toLocaleDateString(
+                          undefined,
+                          { dateStyle: 'medium' },
+                        )}
                       </p>
                     </div>
                   </div>
@@ -273,7 +280,10 @@ export default async function RoundPage({ params }: { params: Promise<{ id: stri
                     <div>
                       <p className="text-sm font-medium">Round Starts</p>
                       <p className="text-sm text-muted-foreground">
-                        {new Date(round.startDate).toLocaleDateString(undefined, { dateStyle: "medium" })}
+                        {new Date(round.startDate).toLocaleDateString(
+                          undefined,
+                          { dateStyle: 'medium' },
+                        )}
                       </p>
                     </div>
                   </div>
@@ -282,14 +292,18 @@ export default async function RoundPage({ params }: { params: Promise<{ id: stri
                     <div>
                       <p className="text-sm font-medium">Round Ends</p>
                       <p className="text-sm text-muted-foreground">
-                        {new Date(round.endDate).toLocaleDateString(undefined, { dateStyle: "medium" })}
+                        {new Date(round.endDate).toLocaleDateString(undefined, {
+                          dateStyle: 'medium',
+                        })}
                       </p>
                     </div>
                   </div>
                 </div>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Blockchain</p>
+                <p className="mb-1 text-sm font-medium text-muted-foreground">
+                  Blockchain
+                </p>
                 <p className="text-sm">{round.blockchain}</p>
               </div>
             </CardContent>
@@ -297,5 +311,5 @@ export default async function RoundPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
     </div>
-  )
+  );
 }

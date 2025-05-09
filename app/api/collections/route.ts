@@ -9,9 +9,12 @@ export async function GET(req: NextRequest) {
     // Get user address from query params or headers
     const { searchParams } = new URL(req.url);
     const userAddress = searchParams.get('userAddress');
-    
+
     if (!userAddress) {
-      return NextResponse.json({ error: 'User address is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'User address is required' },
+        { status: 400 },
+      );
     }
 
     const collections = await prisma.collection.findMany({
@@ -23,11 +26,11 @@ export async function GET(req: NextRequest) {
           include: {
             campaign: {
               include: {
-                images: true
-              }
-            }
-          }
-        }
+                images: true,
+              },
+            },
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -35,13 +38,13 @@ export async function GET(req: NextRequest) {
     });
 
     // Transform the data to match the expected format in the frontend
-    const collectionsWithDetails = collections.map(collection => {
+    const collectionsWithDetails = collections.map((collection) => {
       return {
         id: collection.id,
         name: collection.name,
         description: collection.description,
         createdAt: collection.createdAt,
-        items: collection.campaigns.map(campaignCollection => {
+        items: collection.campaigns.map((campaignCollection) => {
           const campaign = campaignCollection.campaign;
           return {
             itemId: campaign.campaignAddress || String(campaign.id),
@@ -51,17 +54,22 @@ export async function GET(req: NextRequest) {
               title: campaign.title,
               description: campaign.description,
               slug: campaign.slug,
-              image: campaign.images.find((img: CampaignImage) => img.isMainImage)?.imageUrl || '/images/placeholder.svg',
-            }
+              image:
+                campaign.images.find((img: CampaignImage) => img.isMainImage)
+                  ?.imageUrl || '/images/placeholder.svg',
+            },
           };
-        })
+        }),
       };
     });
 
     return NextResponse.json({ collections: collectionsWithDetails });
   } catch (error) {
     console.error('Error fetching collections:', error);
-    return NextResponse.json({ error: 'Failed to fetch collections' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch collections' },
+      { status: 500 },
+    );
   }
 }
 
@@ -72,19 +80,25 @@ export async function POST(req: NextRequest) {
     const { name, description, userAddress } = body;
 
     if (!name) {
-      return NextResponse.json({ error: 'Collection name is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Collection name is required' },
+        { status: 400 },
+      );
     }
 
     if (!userAddress) {
-      return NextResponse.json({ error: 'User address is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'User address is required' },
+        { status: 400 },
+      );
     }
 
-    console.log("Creating collection:", { name, description, userAddress });
+    console.log('Creating collection:', { name, description, userAddress });
 
     try {
       // Ensure the user exists
       const userStatus = await ensureUserExists(userAddress);
-      console.log("User status:", userStatus);
+      console.log('User status:', userStatus);
 
       // Check if collection with this name already exists for the user
       const existingCollection = await prisma.collection.findFirst({
@@ -95,7 +109,10 @@ export async function POST(req: NextRequest) {
       });
 
       if (existingCollection) {
-        return NextResponse.json({ error: 'Collection with this name already exists' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Collection with this name already exists' },
+          { status: 400 },
+        );
       }
 
       // Create the new collection
@@ -107,20 +124,29 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      console.log("Collection created:", collection);
+      console.log('Collection created:', collection);
       return NextResponse.json({ collection });
     } catch (dbError) {
       console.error('Database error creating collection:', dbError);
-      return NextResponse.json({ 
-        error: 'Failed to create collection', 
-        details: dbError instanceof Error ? dbError.message : 'Unknown database error' 
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: 'Failed to create collection',
+          details:
+            dbError instanceof Error
+              ? dbError.message
+              : 'Unknown database error',
+        },
+        { status: 500 },
+      );
     }
   } catch (error) {
     console.error('Error creating collection:', error);
-    return NextResponse.json({ 
-      error: 'Failed to create collection',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: 'Failed to create collection',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 },
+    );
   }
-} 
+}

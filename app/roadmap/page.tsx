@@ -21,25 +21,33 @@ export default function RoadmapPage() {
   // Calculate days until launch (March 21, 2025)
   const launchDate = new Date(launchDateString);
   const today = new Date();
-  const daysUntilLaunch = Math.ceil((launchDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  const progressPercentage = Math.max(0, Math.min(100, ((365 - daysUntilLaunch) / 365) * 100));
+  const daysUntilLaunch = Math.ceil(
+    (launchDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  const progressPercentage = Math.max(
+    0,
+    Math.min(100, ((365 - daysUntilLaunch) / 365) * 100),
+  );
 
   return (
-    <div className="max-w-4xl mx-auto p-8">
-      <Paper shadow="sm" p="xl" radius="md" className="mb-12 bg-gradient-to-r from-blue-50 to-purple-50">
+    <div className="mx-auto max-w-4xl p-8">
+      <Paper
+        shadow="sm"
+        p="xl"
+        radius="md"
+        className="mb-12 bg-gradient-to-r from-blue-50 to-purple-50"
+      >
         <Group justify="space-between" align="center">
           <div>
             <Text size="xl" fw={700} className="text-blue-900">
               Launch Countdown
             </Text>
             <Text size="lg" c="dimmed" mt={4}>
-              {daysUntilLaunch === 0 ? (
-                "Launching today! 🚀"
-              ) : daysUntilLaunch < 0 ? (
-                "Project is live! 🎉"
-              ) : (
-                `${daysUntilLaunch} days until launch`
-              )}
+              {daysUntilLaunch === 0
+                ? 'Launching today! 🚀'
+                : daysUntilLaunch < 0
+                  ? 'Project is live! 🎉'
+                  : `${daysUntilLaunch} days until launch`}
             </Text>
           </div>
           <RingProgress
@@ -47,14 +55,12 @@ export default function RoadmapPage() {
             thickness={12}
             roundCaps
             sections={[{ value: progressPercentage, color: 'blue' }]}
-            label={
-              <IconRocket size={32} style={{ color: '#1e3a8a' }} />
-            }
+            label={<IconRocket size={32} style={{ color: '#1e3a8a' }} />}
           />
         </Group>
       </Paper>
 
-      <h1 className="text-3xl font-bold mb-8">Project Roadmap</h1>
+      <h1 className="mb-8 text-3xl font-bold">Project Roadmap</h1>
 
       <Timeline active={17} bulletSize={24} lineWidth={2}>
         <Timeline.Item
@@ -93,7 +99,7 @@ export default function RoadmapPage() {
           </Text>
         </Timeline.Item>
 
-         <Timeline.Item
+        <Timeline.Item
           bullet={<IconBuildingStore size={12} />}
           title="Campaign Management"
         >
@@ -165,7 +171,7 @@ export default function RoadmapPage() {
           </Text>
         </Timeline.Item>
 
-       <Timeline.Item
+        <Timeline.Item
           bullet={<IconMessage size={12} />}
           title="Social Features"
         >
@@ -234,19 +240,23 @@ export default function RoadmapPage() {
           </Text>
         </Timeline.Item>
 
-        <Timeline.Item 
-          bullet={<IconPhoto size={12} />} 
+        <Timeline.Item
+          bullet={<IconPhoto size={12} />}
           title={
-            <Link 
-              href="/collections" 
+            <Link
+              href="/collections"
               className="text-blue-600 hover:text-blue-800 hover:underline"
             >
               Collections Feature
             </Link>
           }
         >
-          <Text c="dimmed" size="sm">March 18-19, 2025</Text>
-          <Text size="sm" mt={4}>Implemented collections page and database integration</Text>
+          <Text c="dimmed" size="sm">
+            March 18-19, 2025
+          </Text>
+          <Text size="sm" mt={4}>
+            Implemented collections page and database integration
+          </Text>
         </Timeline.Item>
 
         <Timeline.Item bullet={<IconStar size={12} />} title="Favorites System">
@@ -265,7 +275,6 @@ export default function RoadmapPage() {
             <Text variant="link" component="span" inherit>
               Today
             </Text>{' '}
-            
           </Text>
           <Text size="xs" mt={4}>
             Currently deployed on staging
@@ -279,7 +288,6 @@ export default function RoadmapPage() {
             <Text variant="link" component="span" inherit>
               {launchDateString}
             </Text>{' '}
-            
           </Text>
           <Text size="xs" mt={4}>
             Currently deployed on staging

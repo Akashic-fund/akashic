@@ -4,27 +4,33 @@ import { prisma } from '@/lib/prisma';
 // Add an item to a collection
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
     const body = await request.json();
     const { itemId, itemType, userAddress } = body;
 
-    console.log("Adding item to collection:", { 
-      collectionId: id, 
-      itemId, 
-      itemType, 
+    console.log('Adding item to collection:', {
+      collectionId: id,
+      itemId,
+      itemType,
       userAddress,
-      paramsReceived: params
+      paramsReceived: params,
     });
 
     if (!itemId || !itemType) {
-      return NextResponse.json({ error: 'Item ID and type are required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Item ID and type are required' },
+        { status: 400 },
+      );
     }
 
     if (!userAddress) {
-      return NextResponse.json({ error: 'User address is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'User address is required' },
+        { status: 400 },
+      );
     }
 
     try {
@@ -43,7 +49,7 @@ export async function POST(
             address: userAddress,
           },
         });
-        console.log("User created:", user);
+        console.log('User created:', user);
       }
 
       // Check if collection exists and belongs to the user
@@ -60,49 +66,54 @@ export async function POST(
           userAddress,
           collectionsForUser: await prisma.collection.findMany({
             where: { userId: userAddress },
-            select: { id: true, name: true }
-          })
+            select: { id: true, name: true },
+          }),
         });
-        
-        return NextResponse.json({ 
-          error: 'Collection not found or you do not have permission to modify it',
-          details: `Collection with ID ${id} not found for user ${userAddress}`
-        }, { status: 404 });
+
+        return NextResponse.json(
+          {
+            error:
+              'Collection not found or you do not have permission to modify it',
+            details: `Collection with ID ${id} not found for user ${userAddress}`,
+          },
+          { status: 404 },
+        );
       }
 
       // Find the campaign by address or ID
       let campaign;
-      
+
       // First try to find by campaign address
       campaign = await prisma.campaign.findUnique({
         where: {
           campaignAddress: itemId,
         },
       });
-      
+
       // If not found by address, try to find by ID
       if (!campaign) {
         // Try to parse the ID as a number if it's a string
-        const numericId = typeof itemId === 'string' ? parseInt(itemId, 10) || 0 : itemId;
-        
+        const numericId =
+          typeof itemId === 'string' ? parseInt(itemId, 10) || 0 : itemId;
+
         campaign = await prisma.campaign.findFirst({
           where: {
-            OR: [
-              { id: numericId },
-              { slug: itemId }
-            ]
+            OR: [{ id: numericId }, { slug: itemId }],
           },
         });
       }
 
       if (!campaign) {
-        return NextResponse.json({ 
-          error: 'Campaign not found', 
-          details: `Could not find campaign with ID or address: ${itemId}`
-        }, { status: 404 });
+        return NextResponse.json(
+          {
+            error: 'Campaign not found',
+            details: `Could not find campaign with ID or address: ${itemId}`,
+          },
+          { status: 404 },
+        );
       }
 
-      console.log("Found campaign:", campaign);
+      console.log('Found campaign:', campaign);
 
       // Check if campaign already exists in the collection
       const existingItem = await prisma.campaignCollection.findUnique({
@@ -115,7 +126,10 @@ export async function POST(
       });
 
       if (existingItem) {
-        return NextResponse.json({ error: 'Campaign already exists in this collection' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Campaign already exists in this collection' },
+          { status: 400 },
+        );
       }
 
       // Add the campaign to the collection
@@ -126,28 +140,37 @@ export async function POST(
         },
       });
 
-      console.log("Item added to collection:", campaignCollection);
+      console.log('Item added to collection:', campaignCollection);
       return NextResponse.json({ item: campaignCollection });
     } catch (dbError) {
       console.error('Database error adding item to collection:', dbError);
-      return NextResponse.json({ 
-        error: 'Failed to add item to collection', 
-        details: dbError instanceof Error ? dbError.message : 'Unknown database error' 
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: 'Failed to add item to collection',
+          details:
+            dbError instanceof Error
+              ? dbError.message
+              : 'Unknown database error',
+        },
+        { status: 500 },
+      );
     }
   } catch (error) {
     console.error('Error adding item to collection:', error);
-    return NextResponse.json({ 
-      error: 'Failed to add item to collection',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: 'Failed to add item to collection',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 },
+    );
   }
 }
 
 // Remove an item from a collection
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -155,11 +178,17 @@ export async function DELETE(
     const { itemId, userAddress } = body;
 
     if (!itemId) {
-      return NextResponse.json({ error: 'Item ID is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Item ID is required' },
+        { status: 400 },
+      );
     }
 
     if (!userAddress) {
-      return NextResponse.json({ error: 'User address is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'User address is required' },
+        { status: 400 },
+      );
     }
 
     // Check if collection exists and belongs to the user
@@ -171,7 +200,10 @@ export async function DELETE(
     });
 
     if (!collection) {
-      return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Collection not found' },
+        { status: 404 },
+      );
     }
 
     // Find the campaign by address
@@ -182,7 +214,10 @@ export async function DELETE(
     });
 
     if (!campaign) {
-      return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Campaign not found' },
+        { status: 404 },
+      );
     }
 
     // Remove the campaign from the collection
@@ -198,6 +233,9 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error removing item from collection:', error);
-    return NextResponse.json({ error: 'Failed to remove item from collection' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to remove item from collection' },
+      { status: 500 },
+    );
   }
-} 
+}

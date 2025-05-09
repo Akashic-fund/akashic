@@ -1,41 +1,41 @@
 export const NFTMetadata = [
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
+        internalType: 'string',
+        name: 'name',
+        type: 'string',
       },
       {
-        "internalType": "string",
-        "name": "description",
-        "type": "string"
+        internalType: 'string',
+        name: 'description',
+        type: 'string',
       },
       {
-        "internalType": "string",
-        "name": "imageUri",
-        "type": "string"
+        internalType: 'string',
+        name: 'imageUri',
+        type: 'string',
       },
       {
-        "internalType": "string",
-        "name": "campaignId",
-        "type": "string"
+        internalType: 'string',
+        name: 'campaignId',
+        type: 'string',
       },
       {
-        "internalType": "uint256",
-        "name": "supporterNumber",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: 'supporterNumber',
+        type: 'uint256',
+      },
     ],
-    "name": "createMetadata",
-    "outputs": [
+    name: 'createMetadata',
+    outputs: [
       {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
+        internalType: 'string',
+        name: '',
+        type: 'string',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
-  }
-]
+    stateMutability: 'view',
+    type: 'function',
+  },
+];

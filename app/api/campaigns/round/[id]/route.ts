@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const campaignId = (await params).id; // Get the ID from the query parameters
 
@@ -25,12 +25,12 @@ export async function GET(
     return NextResponse.json({ rounds }, { status: 200 });
   } catch (error) {
     console.error(
-      "Failed to fetch rounds for campaign:",
-      (error as unknown as Error).stack
+      'Failed to fetch rounds for campaign:',
+      (error as unknown as Error).stack,
     );
     return NextResponse.json(
-      { error: "Failed to fetch rounds" },
-      { status: 500 }
+      { error: 'Failed to fetch rounds' },
+      { status: 500 },
     );
   }
 }

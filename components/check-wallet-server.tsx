@@ -1,107 +1,123 @@
-"use client"
+'use client';
 
-import { useEffect, useState } from "react"
-import { useAccount } from "@/contexts"
-import { type Address } from "viem"
+import { useEffect, useState } from 'react';
+import { useAccount } from '@/contexts';
+import { type Address } from 'viem';
 // import { ReviewRecipients } from "@/components/review-recipients"
-import { ApplicationStatus } from "@/lib/qfInteractions"
+import { ApplicationStatus } from '@/lib/qfInteractions';
 // import { RecipientStatus } from "@prisma/client"
 
 interface Campaign {
-    id: number
-    title: string
-    slug: string
-    walletAddress: string
-    treasuryAddress: string
-    creatorAddress: string
+  id: number;
+  title: string;
+  slug: string;
+  walletAddress: string;
+  treasuryAddress: string;
+  creatorAddress: string;
 }
 
 interface Recipient {
-    id: number
-    walletAddress: string
-    campaignId: number
-    campaign: {
-        id: number
-        title: string
-    }
-    status: ApplicationStatus
+  id: number;
+  walletAddress: string;
+  campaignId: number;
+  campaign: {
+    id: number;
+    title: string;
+  };
+  status: ApplicationStatus;
 }
 
 interface CheckWalletServerProps {
-    poolId: bigint
-    roundId: number
-    strategyAddress: Address
-    roundAdminAddress: Address
-    roundStatusKey: string
+  poolId: bigint;
+  roundId: number;
+  strategyAddress: Address;
+  roundAdminAddress: Address;
+  roundStatusKey: string;
 }
 
 export function CheckWalletServer({
-    poolId,
-    roundId,
-    strategyAddress,
-    roundAdminAddress,
-    // roundStatusKey
+  poolId,
+  roundId,
+  strategyAddress,
+  roundAdminAddress,
+  // roundStatusKey
 }: CheckWalletServerProps) {
-    const { address, isConnected } = useAccount()
-    const [userCampaigns, setUserCampaigns] = useState<Campaign[]>([])
-    const [pendingRecipients, setPendingRecipients] = useState<Recipient[]>([])
-    const [isLoading, setIsLoading] = useState(true)
-    console.log("poolId", poolId, "roundId", roundId, "strategyAddress", strategyAddress, "pendingRecipients", pendingRecipients)
+  const { address, isConnected } = useAccount();
+  const [userCampaigns, setUserCampaigns] = useState<Campaign[]>([]);
+  const [pendingRecipients, setPendingRecipients] = useState<Recipient[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  console.log(
+    'poolId',
+    poolId,
+    'roundId',
+    roundId,
+    'strategyAddress',
+    strategyAddress,
+    'pendingRecipients',
+    pendingRecipients,
+  );
 
-    const isAdmin = isConnected && address === roundAdminAddress
-    console.log("userCampaigns", userCampaigns)
+  const isAdmin = isConnected && address === roundAdminAddress;
+  console.log('userCampaigns', userCampaigns);
 
-    useEffect(() => {
-        async function loadData() {
-            setIsLoading(true)
+  useEffect(() => {
+    async function loadData() {
+      setIsLoading(true);
 
-            if (isConnected && address) {
-                // Load user campaigns if the wallet is connected
-                try {
-                    const response = await fetch(`/api/campaigns/user?address=${address}`)
-                    const data = await response.json()
+      if (isConnected && address) {
+        // Load user campaigns if the wallet is connected
+        try {
+          const response = await fetch(
+            `/api/campaigns/user?address=${address}`,
+          );
+          const data = await response.json();
 
-                    if (data.campaigns && Array.isArray(data.campaigns)) {
-                        // Map the response to match our expected Campaign interface
-                        const mappedCampaigns = data.campaigns.map((campaign: Campaign) => ({
-                            id: campaign.id,
-                            title: campaign.title,
-                            slug: campaign.slug || '',
-                            walletAddress: campaign.treasuryAddress || campaign.creatorAddress || '',
-                        }))
+          if (data.campaigns && Array.isArray(data.campaigns)) {
+            // Map the response to match our expected Campaign interface
+            const mappedCampaigns = data.campaigns.map(
+              (campaign: Campaign) => ({
+                id: campaign.id,
+                title: campaign.title,
+                slug: campaign.slug || '',
+                walletAddress:
+                  campaign.treasuryAddress || campaign.creatorAddress || '',
+              }),
+            );
 
-                        setUserCampaigns(mappedCampaigns)
+            setUserCampaigns(mappedCampaigns);
 
-                        // If user is admin, load pending recipients
-                        if (isAdmin) {
-                            const recipientsResponse = await fetch(`/api/rounds/recipients/pending/${roundId}`)
-                            const recipientsData = await recipientsResponse.json()
+            // If user is admin, load pending recipients
+            if (isAdmin) {
+              const recipientsResponse = await fetch(
+                `/api/rounds/recipients/pending/${roundId}`,
+              );
+              const recipientsData = await recipientsResponse.json();
 
-                            if (recipientsData.success) {
-                                setPendingRecipients(recipientsData.recipients)
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.error("Failed to load user data", error)
-                }
-            } else {
-                // Reset state if wallet disconnected
-                setUserCampaigns([])
-                setPendingRecipients([])
+              if (recipientsData.success) {
+                setPendingRecipients(recipientsData.recipients);
+              }
             }
-
-            setIsLoading(false)
+          }
+        } catch (error) {
+          console.error('Failed to load user data', error);
         }
+      } else {
+        // Reset state if wallet disconnected
+        setUserCampaigns([]);
+        setPendingRecipients([]);
+      }
 
-        loadData()
-    }, [address, isConnected, isAdmin, roundId])
+      setIsLoading(false);
+    }
 
-    if (isLoading) return null
+    loadData();
+  }, [address, isConnected, isAdmin, roundId]);
 
-    return (
-        <>
-            {/* {isConnected && userCampaigns.length > 0 && (
+  if (isLoading) return null;
+
+  return (
+    <>
+      {/* {isConnected && userCampaigns.length > 0 && (
                 <RegisterCampaignRecipient
                     campaignId={userCampaigns[0].id}
                     campaignTitle={userCampaigns[0].title}
@@ -114,7 +130,7 @@ export function CheckWalletServer({
                 />
             )} */}
 
-            {/* {isAdmin && pendingRecipients.length > 0 && (
+      {/* {isAdmin && pendingRecipients.length > 0 && (
                 <ReviewRecipients
                     strategyAddress={strategyAddress}
                     poolId={poolId}
@@ -129,6 +145,6 @@ export function CheckWalletServer({
                     isAdmin={isAdmin}
                 />
             )} */}
-        </>
-    )
-} 
+    </>
+  );
+}

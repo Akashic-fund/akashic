@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '../../../../lib/prisma';
 
 export async function POST(req: NextRequest) {
   try {
@@ -7,8 +7,8 @@ export async function POST(req: NextRequest) {
 
     if (!campaignId || !roundIds || !Array.isArray(roundIds)) {
       return new NextResponse(
-        JSON.stringify({ error: "Campaign ID and round IDs are required" }),
-        { status: 400 }
+        JSON.stringify({ error: 'Campaign ID and round IDs are required' }),
+        { status: 400 },
       );
     }
 
@@ -22,16 +22,16 @@ export async function POST(req: NextRequest) {
             Campaign: { connect: { id: campaignId } },
             Round: { connect: { id: roundId } },
           },
-        })
-      )
+        }),
+      ),
     );
 
     return new NextResponse(JSON.stringify(roundCampaigns), { status: 201 });
   } catch (error) {
-    console.error("Failed to add campaign to rounds:", error);
+    console.error('Failed to add campaign to rounds:', error);
     return new NextResponse(
-      JSON.stringify({ error: "Failed to add campaign to rounds" }),
-      { status: 500 }
+      JSON.stringify({ error: 'Failed to add campaign to rounds' }),
+      { status: 500 },
     );
   }
 }

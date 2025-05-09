@@ -1,4 +1,4 @@
-import { BigNumber } from "ethers";
+import { BigNumber } from 'ethers';
 
 /**
  * Metadata structure as defined in Allo contracts
@@ -6,8 +6,8 @@ import { BigNumber } from "ethers";
  * @property pointer - The pointer to the metadata (e.g., IPFS hash)
  */
 export interface Metadata {
-    protocol: number;
-    pointer: string;
+  protocol: number;
+  pointer: string;
 }
 
 /**
@@ -19,11 +19,11 @@ export interface Metadata {
  * @property proposalBid - Proposed bid amount as a number or BigNumber
  */
 export interface RecipientRegistrationParams {
-    useProfileAnchor: boolean;
-    profileAnchor?: string; // Optional: only needed if useProfileAnchor is true
-    recipientAddress: string;
-    metadata: Metadata;
-    proposalBid: number | BigNumber;
+  useProfileAnchor: boolean;
+  profileAnchor?: string; // Optional: only needed if useProfileAnchor is true
+  recipientAddress: string;
+  metadata: Metadata;
+  proposalBid: number | BigNumber;
 }
 
 /**
@@ -34,16 +34,16 @@ export interface RecipientRegistrationParams {
  * @property error - Error message if registration failed
  */
 export interface RegistrationResponse {
-    success: boolean;
-    recipientIds?: string[];
-    txHash?: string;
-    error?: string;
+  success: boolean;
+  recipientIds?: string[];
+  txHash?: string;
+  error?: string;
 }
 
 /**
  * Contract addresses and IDs configuration
  */
 export interface ContractConfig {
-    alloAddress: string;
-    poolId: number | BigNumber;
+  alloAddress: string;
+  poolId: number | BigNumber;
 }

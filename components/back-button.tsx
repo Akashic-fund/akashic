@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react';
 
 export default function BackButton() {
   return (
@@ -11,5 +11,5 @@ export default function BackButton() {
       <ArrowLeft className="h-4 w-4" />
       <span className="sr-only">Back</span>
     </button>
-  )
-} 
+  );
+}

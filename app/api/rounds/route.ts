@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/prisma";
-import { NextRequest, NextResponse } from "next/server";
+import { prisma } from '@/lib/prisma';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET() {
   try {
@@ -8,10 +8,10 @@ export async function GET() {
       status: 200,
     }); // Return the rounds as JSON
   } catch (error) {
-    console.error("Error fetching rounds: ", error);
+    console.error('Error fetching rounds: ', error);
     return NextResponse.json(
-      { error: "Failed to fetch rounds" },
-      { status: 500 }
+      { error: 'Failed to fetch rounds' },
+      { status: 500 },
     ); // Handle errors
   } finally {
     await prisma.$disconnect(); // Disconnect Prisma Client
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json(); // Parse the JSON body
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); // Handle invalid JSON
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); // Handle invalid JSON
   }
 
   const {
@@ -55,17 +55,17 @@ export async function POST(req: NextRequest) {
     !logoUrl
   ) {
     return NextResponse.json(
-      { error: "Missing required fields" },
-      { status: 400 }
+      { error: 'Missing required fields' },
+      { status: 400 },
     );
   }
 
   // Validate status against enum values
-  const validStatuses = ["NOT_STARTED", "ACTIVE", "CLOSED"];
+  const validStatuses = ['NOT_STARTED', 'ACTIVE', 'CLOSED'];
   if (status && !validStatuses.includes(status)) {
     return NextResponse.json(
-      { error: "Invalid status value" },
-      { status: 400 }
+      { error: 'Invalid status value' },
+      { status: 400 },
     );
   }
 
@@ -82,19 +82,19 @@ export async function POST(req: NextRequest) {
         endDate: new Date(endDate),
         blockchain,
         logoUrl,
-        strategyAddress: body.strategyAddress || "0x0",
-        profileId: body.profileId || "default-profile",
-        managerAddress: body.managerAddress || "0x0",
-        tokenAddress: body.tokenAddress || "0x0",
+        strategyAddress: body.strategyAddress || '0x0',
+        profileId: body.profileId || 'default-profile',
+        managerAddress: body.managerAddress || '0x0',
+        tokenAddress: body.tokenAddress || '0x0',
         tokenDecimals: body.tokenDecimals || 18,
       },
     });
     return NextResponse.json(newRound, { status: 201 });
   } catch (error) {
-    console.error("Error creating round: ", (error as unknown as Error).stack);
+    console.error('Error creating round: ', (error as unknown as Error).stack);
     return NextResponse.json(
-      { error: "Failed to create round" },
-      { status: 500 }
+      { error: 'Failed to create round' },
+      { status: 500 },
     );
   }
 }
@@ -117,10 +117,10 @@ export async function PUT(req: NextRequest) {
     });
     return NextResponse.json(updatedRound, { status: 200 });
   } catch (error) {
-    console.error("Error updating rounds: ", (error as unknown as Error).stack);
+    console.error('Error updating rounds: ', (error as unknown as Error).stack);
     return NextResponse.json(
-      { error: "Failed to update round" },
-      { status: 500 }
+      { error: 'Failed to update round' },
+      { status: 500 },
     );
   }
 }
