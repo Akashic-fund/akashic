@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { cn } from '@/lib/utils'
-import { usePrivy } from '@privy-io/react-auth'
+import { useAuth } from "@/contexts";
 import { Grid, Home, LogOut, Settings, Star, BookCheck } from 'lucide-react'
 import Image from "next/image"
 import Link from "next/link"
@@ -20,10 +20,10 @@ interface NavItem {
 export const SideBar = () => {
     const { isOpen, setIsOpen } = useSidebar()
     const pathname = usePathname()
-    const { user, logout, login, authenticated } = usePrivy()
+    const { login, logout, authenticated, address } = useAuth()
     const showRounds = useFeatureFlag('ENABLE_ROUNDS')
 
-    console.log("user", user)
+    console.log("user", address)
     const shortenAddress = (address: string) => {
         return `${address.slice(0, 6)}...${address.slice(-4)}`
     }
@@ -139,10 +139,13 @@ export const SideBar = () => {
                                     </Button>
                                 ) : (
                                     <div className='flex items-center justify-center gap-2 px-2'>
-                                        {user?.wallet?.address ? shortenAddress(user.wallet.address) : 'User'}
+                                        {address ? shortenAddress(address) : 'User'}
                                         <LogOut
-                                            className="h-6 w-6 cursor-pointer"
-                                            onClick={() => logout()}
+                                            className="h-5 w-5 text-gray-400 group-hover:text-red-600 transition-colors cursor-pointer"
+                                            onClick={async () => {
+                                              await logout();
+                                              window.location.href = '/';
+                                            }}
                                         />
                                     </div>
                                 )}

@@ -3,7 +3,7 @@
 import { PrivyProvider } from '@privy-io/react-auth';
 import { ReactNode } from 'react';
 import { WagmiProvider } from '@privy-io/wagmi';
-import {  celoAlfajores, sepolia, mainnet } from 'wagmi/chains';
+import { celoAlfajores, sepolia, mainnet } from '@/config/wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CollectionProvider } from '@/contexts/CollectionContext';
 import { SidebarProvider } from '@/contexts/SidebarContext';
@@ -11,16 +11,19 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { EnvironmentProvider } from '@/components/environment-theme-provider';
 import { createConfig } from '@privy-io/wagmi';
 import { http } from 'wagmi';
+import { chainConfig } from '@/config/chain';
+import { AccountProvider, AuthProvider } from "@/contexts";
 
-const config = createConfig({
+// Create Privy-specific wagmi config
+const privyWagmiConfig = createConfig({
   chains: [celoAlfajores, sepolia, mainnet],
   transports: {
-      [celoAlfajores.id]: http(process.env.NEXT_PUBLIC_RPC_URL || "https://alfajores-forno.celo-testnet.org"),
-      [sepolia.id]: http(),
-      [mainnet.id]: http(),
+    [celoAlfajores.id]: http(chainConfig.rpcUrl),
+    [sepolia.id]: http(),
+    [mainnet.id]: http(),
   },
   ssr: true,
-})
+});
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,7 +54,7 @@ export default function Providers({ children }: { children: ReactNode }) {
             useSandbox: true,
           },
         },
-        defaultChain: celoAlfajores,
+        defaultChain: chainConfig.defaultChain,
         embeddedWallets: {
           createOnLogin: 'users-without-wallets',
           requireUserPasswordOnCreate: false,
@@ -62,11 +65,13 @@ export default function Providers({ children }: { children: ReactNode }) {
       }}
     >
       <QueryClientProvider client={queryClient}>
-        <WagmiProvider config={config}>
+        <WagmiProvider config={privyWagmiConfig}>
           <SidebarProvider>
             <CollectionProvider>
               <EnvironmentProvider>
-                {children}
+                <AccountProvider>
+                  <AuthProvider>{children}</AuthProvider>
+                </AccountProvider>
               </EnvironmentProvider>
             </CollectionProvider>
           </SidebarProvider>

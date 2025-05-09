@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAccount } from 'wagmi'
 import { parseEther } from 'viem'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,6 +14,7 @@ import { Label } from "./ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Image from "next/image"
 import { countries, categories } from '@/lib/constant'
+import { useAccount } from "@/contexts";
 
 export function CreateCampaign() {
   const { address } = useAccount()
@@ -216,31 +216,41 @@ export function CreateCampaign() {
         description: "Saving campaign details to database...",
       })
 
-        // Create FormData for multipart/form-data
-        const formDataToSend = new FormData()
-        formDataToSend.append('title', formData.title)
-        formDataToSend.append('description', formData.description)
-        formDataToSend.append('fundingGoal', formData.fundingGoal)
-        formDataToSend.append('startTime', formData.startTime)
-        formDataToSend.append('endTime', formData.endTime)
-        formDataToSend.append('creatorAddress', address)
-        formDataToSend.append('status', 'draft')
-        formDataToSend.append('location', formData.location)
-        formDataToSend.append('category', formData.category)
-        formDataToSend.append('slug', slug)
-        if (formData.bannerImage) {
-          formDataToSend.append('bannerImage', formData.bannerImage)
-        }
-  
-        // First, save to database with draft status
-        const response = await fetch('/api/campaigns', {
-          method: 'POST',
-          body: formDataToSend,
-        })
-  
+      // Create FormData for multipart/form-data
+      const formDataToSend = new FormData()
+      formDataToSend.append('title', formData.title)
+      formDataToSend.append('description', formData.description)
+      formDataToSend.append('fundingGoal', formData.fundingGoal)
+      formDataToSend.append('startTime', formData.startTime)
+      formDataToSend.append('endTime', formData.endTime)
+      formDataToSend.append('creatorAddress', address)
+      formDataToSend.append('status', 'draft')
+      formDataToSend.append('location', formData.location)
+      formDataToSend.append('category', formData.category)
+      formDataToSend.append('slug', slug)
+      if (formData.bannerImage) {
+        formDataToSend.append('bannerImage', formData.bannerImage)
+      }
+
+      // First, save to database with draft status
+      const response = await fetch('/api/campaigns', {
+        method: 'POST',
+        body: formDataToSend,
+      })
 
       if (!response.ok) {
-        throw new Error('Failed to save campaign')
+        let errorMsg = 'Failed to save campaign';
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData?.error ? `${errorData.error}${errorData.details ? ': ' + errorData.details : ''}` : errorMsg;
+        } catch {}
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: errorMsg,
+        })
+        setDbError(errorMsg)
+        return;
       }
 
       toast({
@@ -279,9 +289,9 @@ export function CreateCampaign() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to create campaign. Your campaign has been saved as draft.",
+        description: error instanceof Error ? error.message : "Failed to create campaign. Your campaign has been saved as draft.",
       })
-      setDbError('Failed to create campaign. Your campaign has been saved as draft.')
+      setDbError(error instanceof Error ? error.message : 'Failed to create campaign. Your campaign has been saved as draft.')
     }
   }
 

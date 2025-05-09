@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useAccount } from "wagmi"
+import { useAccount } from "@/contexts"
 import { type Address } from "viem"
 // import { ReviewRecipients } from "@/components/review-recipients"
 import { ApplicationStatus } from "@/lib/qfInteractions"

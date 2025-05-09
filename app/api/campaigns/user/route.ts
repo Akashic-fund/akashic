@@ -2,9 +2,10 @@ import { createPublicClient, http } from 'viem';
 import { celoAlfajores } from 'viem/chains';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { chainConfig } from '@/config/chain';
 
 const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_CAMPAIGN_INFO_FACTORY;
-const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL;
+const RPC_URL = chainConfig.rpcUrl;
 
 type DbCampaign = {
     id: number;

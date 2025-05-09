@@ -2,7 +2,7 @@ import { type Abi, encodeAbiParameters, parseAbiParameters, type Address, type H
 // {type ReadContractParameters, encodeFunctionData, getContractAddress } from 'viem'
 // Import only necessary functions from @wagmi/core for reads if needed server-side,but primarily rely on client-side hooks for writes.
 import { readContract } from '@wagmi/core'
-import { config } from '@/lib/wagmi'
+import { config } from '@/config/wagmi'
 import { ALLO_ADDRESS, KICKSTARTER_QF_ADDRESS } from './constant'
 // import { type Chain } from 'wagmi/chains' // Import Chain type
 // import { deployContract } from 'wagmi/actions'

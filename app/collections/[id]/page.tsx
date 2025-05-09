@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useCollection } from '@/contexts/CollectionContext'
-import { usePrivy } from '@privy-io/react-auth'
+import { useAuth } from "@/contexts";
 import { Card, CardContent, CardHeader, Button, Skeleton } from '@/components/ui'
 import { ArrowLeft, Edit, Share, Trash2 } from 'lucide-react'
 import Image from 'next/image'
@@ -43,7 +43,7 @@ export default function CollectionDetailsPage() {
     const params = useParams()
     const router = useRouter()
     const { id } = params as { id: string }
-    const { user, authenticated } = usePrivy()
+    const { address, authenticated } = useAuth()
     const { removeFromCollection, deleteCollection } = useCollection()
 
     const [collection, setCollection] = useState<CollectionDetails | null>(null)
@@ -59,7 +59,7 @@ export default function CollectionDetailsPage() {
         async function fetchCollection() {
             try {
                 setLoading(true);
-                const response = await fetch(`/api/collections/${id}?userAddress=${user?.wallet?.address || ''}`);
+                const response = await fetch(`/api/collections/${id}?userAddress=${address || ''}`);
                 
                 if (!response.ok) {
                     throw new Error('Failed to fetch collection');
@@ -86,7 +86,7 @@ export default function CollectionDetailsPage() {
         if (authenticated && id) {
             fetchCollection();
         }
-    }, [id, authenticated, user?.wallet?.address]);
+    }, [id, authenticated, address]);
 
     const handleRemoveItem = async (itemId: string) => {
         if (!collection) return
@@ -118,7 +118,7 @@ export default function CollectionDetailsPage() {
     }
 
     const handleUpdateCollection = async () => {
-        if (!collection || !user?.wallet?.address) return
+        if (!collection || !address) return
         
         setIsUpdating(true)
         try {
@@ -130,7 +130,7 @@ export default function CollectionDetailsPage() {
                 body: JSON.stringify({
                     name: editName,
                     description: editDescription,
-                    userAddress: user.wallet.address,
+                    userAddress: address,
                 }),
             })
             

@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { Search } from 'lucide-react'
 import Image from "next/image"
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from "@/contexts";
 import { CreateCampaign } from '@/components/create-campaign'
 import {
   Button,
@@ -15,7 +15,7 @@ export function ExploreStories() {
   const [showCreateCampaign, setShowCreateCampaign] = useState(false)
   const [searchTerm, setSearchTerm] = useState<string>('')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const { login, authenticated } = usePrivy();
+  const { login, authenticated } = useAuth();
 
   return (
     <div className="flex-col min-h-screen bg-gray-50">

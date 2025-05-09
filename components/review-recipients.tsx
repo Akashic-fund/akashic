@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useAccount } from "wagmi"
+import { useAccount } from "@/contexts"
 import { type Address } from "viem"
 import { RecipientStatus } from "@prisma/client"
 

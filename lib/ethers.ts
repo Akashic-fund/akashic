@@ -5,6 +5,7 @@ import { AKASHIC_NFT_REGISTRY } from '@/lib/constant';
 // import { CampaignNFTabi } from '@/contracts/nftABI/CampaignNFT';
 import {CampaignNFTFactory} from '@/contracts/nftABI/CampaignNFTFactory';
 // import { NFT_METADATA } from '@/lib/constant';
+import { chainConfig } from '@/config/chain';
 
 export const getProvider = () => {
     // For browser environments
@@ -13,7 +14,7 @@ export const getProvider = () => {
     }
 
     // Fallback to a public provider
-    return new ethers.providers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
+    return new ethers.providers.JsonRpcProvider(chainConfig.rpcUrl);
 };
 
 export const getSigner = async () => {

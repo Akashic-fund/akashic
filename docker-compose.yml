@@ -1,35 +1,99 @@
+networks:
+  extern-net:
+  aka-net:
+
+volumes:
+  pgdata:
+
+x-app-environment: &app-environment
+  DATABASE_URL: postgres://${POSTGRES_USER:-akashic}:${POSTGRES_PASSWORD:-akashic}@database:5432/${POSTGRES_DB:-akashic_dev}
+  NODE_ENV: development
+
 services:
-  db:
+  database:
     image: postgres:latest
     restart: unless-stopped
     environment:
-      POSTGRES_USER: akashic
-      POSTGRES_PASSWORD: akashic
-      POSTGRES_DB: akashic_dev
+      POSTGRES_USER: ${POSTGRES_USER:-akashic}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-akashic}
+      POSTGRES_DB: ${POSTGRES_DB:-akashic_dev}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U akashic -d akashic_dev"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-akashic} -d ${POSTGRES_DB:-akashic_dev}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
-    ports:
-      - '127.0.0.1:5432:5432'  # Only allow local connections
+    networks:
+      aka-net:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
-  app:
-    build: .
-    depends_on:
-      db:
-        condition: service_healthy
-    env_file:
-      - .env.local
+  pgadmin:
+    image: dpage/pgadmin4
     ports:
-      - '3000:3000'
-    volumes:
-      - .:/app:delegated
+      - "${PGADMIN_PORT:-3001}:80"
+    depends_on:
+      - database
     environment:
-      - DATABASE_URL=postgres://akashic:akashic@db:5432/akashic_dev
-      - NODE_ENV=development
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@local.host}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+    profiles:
+      - develop
+    networks:
+      aka-net:
 
-volumes:
-  pgdata: 
+  app:
+    build:
+      context: .
+      target: devrunner
+    depends_on:
+      database:
+        condition: service_healthy
+    ports:
+      - "${DEV_APP_PORT:-3000}:3000"
+    volumes:
+      - ./:/app
+      # - ./dev_modules/app/node_modules:/app/node_modules
+      - ./dev_modules/app/.next:/app/.next
+      - ./dev_modules/pnpm_store:/app/.pnpm-store
+    environment:
+      <<: *app-environment
+    networks:
+      extern-net:
+      aka-net:
+
+  app-shell:
+    build:
+      context: .
+      target: devrunner
+    command: /bin/bash
+    depends_on:
+      - app
+    volumes_from:
+      - app
+    environment:
+      <<: *app-environment
+    profiles:
+      - shell
+    networks:
+      aka-net:
+
+  app-trace:
+    build:
+      context: .
+      target: devrunner
+    command: "pnpm next internal turbo-trace-server .next/trace-turbopack"
+    # apk add socat ; socat -d -d TCP4-LISTEN:5747,bind=172.20.0.3,fork TCP4:localhost:5747 & ;
+    ports:
+      - 5747:5747
+    volumes_from:
+      - app
+    environment:
+      <<: *app-environment
+    profiles:
+      - debug
+    networks:
+      extern-net:

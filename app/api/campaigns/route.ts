@@ -3,59 +3,55 @@ import { celoAlfajores } from 'viem/chains';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { DbCampaign } from '@/types/campaign'
+import { chainConfig } from '@/config/chain';
 
 const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_CAMPAIGN_INFO_FACTORY;
-const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL;
+const RPC_URL = chainConfig.rpcUrl;
 
 async function uploadToCloudinary(file: File): Promise<string> {
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || '');
-    
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    if (!cloudName) {
-      throw new Error('Cloudinary cloud name is not configured');
-    }
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || '');
 
-    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-    if (!uploadPreset) {
-      throw new Error('Cloudinary upload preset is not configured');
-    }
-
-    console.log('Uploading to Cloudinary with:', {
-      cloudName,
-      uploadPreset,
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type
-    });
-    
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-      {
-        method: 'POST',
-        body: formData,
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error('Cloudinary upload failed:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorData
-      });
-      throw new Error(`Failed to upload image to Cloudinary: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    console.log('Cloudinary upload successful:', data);
-    return data.secure_url;
-  } catch (error) {
-    console.error('Error uploading to Cloudinary:', error);
-    return '/images/placeholder.svg';
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  if (!cloudName) {
+    throw new Error('Cloudinary cloud name is not configured');
   }
+
+  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+  if (!uploadPreset) {
+    throw new Error('Cloudinary upload preset is not configured');
+  }
+
+  console.log('Uploading to Cloudinary with:', {
+    cloudName,
+    uploadPreset,
+    fileName: file.name,
+    fileSize: file.size,
+    fileType: file.type
+  });
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+    {
+      method: 'POST',
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.text();
+    console.error('Cloudinary upload failed:', {
+      status: response.status,
+      statusText: response.statusText,
+      error: errorData
+    });
+    throw new Error(`Cloudinary upload failed: ${errorData}`);
+  }
+
+  const data = await response.json();
+  console.log('Cloudinary upload successful:', data);
+  return data.secure_url;
 }
 
 async function getPublicClient() {
@@ -181,8 +177,11 @@ export async function POST(request: Request) {
       try {
         imageUrl = await uploadToCloudinary(bannerImage);
       } catch (imageError) {
-        console.error('Error processing image:', imageError)
-        imageUrl = '/images/placeholder.svg'
+        console.error('Error uploading image:', imageError);
+        return NextResponse.json(
+          { error: 'Image upload failed', details: imageError instanceof Error ? imageError.message : 'Unknown error' },
+          { status: 422 }
+        );
       }
     }
 

@@ -35,8 +35,6 @@ import { useCollection } from "@/contexts/CollectionContext";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { categories } from "@/lib/constant";
-// import { usePrivy } from "@privy-io/react-auth";
-// import { collections } from "@/lib/constant";
 
 interface CampaignListProps {
   searchTerm: string;

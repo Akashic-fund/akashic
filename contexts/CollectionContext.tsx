@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { Collection, CollectionContextType, Campaign } from '@/types'
-import { usePrivy } from '@privy-io/react-auth'
+import { useAuth } from './AuthContext'
 import { toast } from '@/hooks/use-toast'
 
 const CollectionContext = createContext<CollectionContextType>({
@@ -20,14 +20,14 @@ export const useCollection = () => useContext(CollectionContext)
 export const CollectionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [userCollections, setUserCollections] = useState<Collection[]>([])
     const [isLoading, setIsLoading] = useState(false)
-    const { user, authenticated } = usePrivy()
+    const { address, authenticated } = useAuth()
 
     const fetchCollections = async () => {
-        if (!authenticated || !user?.wallet?.address) return
+        if (!authenticated || !address) return
 
         setIsLoading(true)
         try {
-            const userAddress = user.wallet.address
+            const userAddress = address
             const response = await fetch(`/api/collections?userAddress=${userAddress}`)
             const data = await response.json()
 
@@ -76,10 +76,12 @@ export const CollectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     // Fetch collections when user is authenticated
     useEffect(() => {
-        if (authenticated && user?.wallet?.address) {
+        if (authenticated && address) {
             fetchCollections()
+        } else {
+            setUserCollections([])
         }
-    }, [authenticated, user?.wallet?.address])
+    }, [authenticated, address])
 
     const refreshCollections = async () => {
         await fetchCollections()
@@ -92,7 +94,7 @@ export const CollectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             // Convert campaign.id to string if it's a number
             const campaignId = typeof campaign.id === 'number' ? campaign.id.toString() : campaign.id;
 
-            if (!user || !user.wallet?.address) {
+            if (!address) {
                 throw new Error('User not authenticated');
             }
 
@@ -104,7 +106,7 @@ export const CollectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 body: JSON.stringify({
                     itemId: campaignId, // Use the converted ID
                     itemType: 'campaign',
-                    userAddress: user.wallet.address,
+                    userAddress: address,
                 }),
             });
 
@@ -133,11 +135,11 @@ export const CollectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const addToCollection = async (campaign: Campaign, collectionName: string, isNewCollection = false) => {
         try {
-            if (!user?.wallet?.address) {
+            if (!address) {
                 throw new Error('User not authenticated');
             }
 
-            console.log(`Creating new collection: ${collectionName} for user: ${user.wallet.address}`);
+            console.log(`Creating new collection: ${collectionName} for user: ${address}`);
 
             if (isNewCollection) {
                 // Create a new collection
@@ -148,7 +150,7 @@ export const CollectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     },
                     body: JSON.stringify({
                         name: collectionName,
-                        userAddress: user.wallet.address,
+                        userAddress: address,
                     }),
                 });
 
@@ -187,9 +189,9 @@ export const CollectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     const removeFromCollection = async (storyId: string, collectionId: string) => {
-        if (!authenticated || !user?.wallet?.address) return
+        if (!authenticated || !address) return
 
-        const userAddress = user.wallet.address
+        const userAddress = address
         try {
             const response = await fetch(`/api/collections/${collectionId}/items`, {
                 method: 'DELETE',
@@ -236,9 +238,9 @@ export const CollectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
 
     const deleteCollection = async (collectionId: string) => {
-        if (!authenticated || !user?.wallet?.address) return
+        if (!authenticated || !address) return
 
-        const userAddress = user.wallet.address
+        const userAddress = address
         try {
             const response = await fetch(`/api/collections/${collectionId}?userAddress=${userAddress}`, {
                 method: 'DELETE',

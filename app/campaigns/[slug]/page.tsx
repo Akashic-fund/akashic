@@ -161,13 +161,13 @@ export default async function CampaignPage({
               Rewards
             </TabsTrigger>
             <TabsTrigger value="updates" className="data-[state=active]:border-b-2 data-[state=active]:border-green-600 rounded-none">
-              Updates
+              Updates ({campaign.updates?.length || 0})
             </TabsTrigger>
             <TabsTrigger value="comments" className="data-[state=active]:border-b-2 data-[state=active]:border-green-600 rounded-none">
-              Comments
+              Comments ({campaign.comments?.length || 0})
             </TabsTrigger>
             <TabsTrigger value="transactions" className="data-[state=active]:border-b-2 data-[state=active]:border-green-600 rounded-none">
-              Transactions
+              Transactions ({campaign.payments?.length || 0})
             </TabsTrigger>
           </TabsList>
 

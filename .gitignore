@@ -43,3 +43,6 @@ next-env.d.ts
 .cursorrules
 .qodo
 scripts/
+
+# docker dev environment
+dev_modules

@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useTransition } from "react";
 import { useRef } from "react";
 
@@ -12,13 +12,13 @@ interface CommentFormProps {
 
 export function CommentForm({ onSubmit }: CommentFormProps) {
     const [isPending, startTransition] = useTransition();
-    const { user } = usePrivy();
+    const { address } = useAuth();
     const formRef = useRef<HTMLFormElement>(null);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         
-        const walletAddress = user?.wallet?.address;
+        const walletAddress = address;
         if (!walletAddress) {
             toast({
                 variant: "destructive",

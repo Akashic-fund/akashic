@@ -26,7 +26,7 @@ import * as z from "zod";
 import { ArrowLeft, Loader2, CheckCircle, AlertTriangle, Database } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useAccount } from "wagmi";
+import { useAccount } from "@/contexts";
 import { useWriteContract, useWaitForTransactionReceipt, useDeployContract } from "wagmi";
 import { parseUnits, formatUnits, type Address, type Hash, maxUint256, decodeEventLog, BaseError } from "viem";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";

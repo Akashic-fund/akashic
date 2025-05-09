@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useAccount } from 'wagmi'
 import { 
     Card, 
     CardContent, 
@@ -17,6 +16,7 @@ import {
 } from "@/components/ui"
 import { SideBar } from '@/components/SideBar'
 import { cn } from '@/lib/utils'
+import { useAuth } from "@/contexts"
 import { useSidebar } from '@/contexts/SidebarContext'
 import { AlertCircle, Coins, Users, Calendar, TrendingUp, Heart } from "lucide-react"
 import { Campaign } from '@/types/campaign'
@@ -28,7 +28,7 @@ interface FavoriteCampaign {
 }
 
 export default function DashboardPage() {
-    const { address } = useAccount()
+    const { address, authenticated } = useAuth()
     const [campaigns, setCampaigns] = useState<Campaign[]>([])
     const [favoriteCampaigns, setFavoriteCampaigns] = useState<Campaign[]>([])
     const [loading, setLoading] = useState(true)
@@ -38,13 +38,11 @@ export default function DashboardPage() {
     const { isOpen } = useSidebar()
 
     useEffect(() => {
+        if (!authenticated || !address) {
+            // Don't fetch or set error until both are ready
+            return;
+        }
         const fetchUserCampaigns = async () => {
-            if (!address) {
-                setError('Please connect your wallet to view your campaigns')
-                setLoading(false)
-                return
-            }
-
             try {
                 console.log('Fetching campaigns for address:', address);
                 const response = await fetch(`/api/campaigns/user?address=${address}`)
@@ -66,11 +64,6 @@ export default function DashboardPage() {
         }
         
         const fetchFavoriteCampaigns = async () => {
-            if (!address) {
-                setLoadingFavorites(false)
-                return
-            }
-            
             try {
                 const response = await fetch(`/api/favorites/user?userAddress=${address}`)
                 const data = await response.json()
@@ -96,32 +89,9 @@ export default function DashboardPage() {
         
         fetchUserCampaigns()
         fetchFavoriteCampaigns()
-    }, [address])
+    }, [authenticated, address])
 
-    const calculateStats = (campaigns: Campaign[]) => {
-        return {
-            totalCampaigns: campaigns.length,
-            totalRaised: campaigns.reduce((sum, campaign) => {
-                const raised = campaign.totalRaised ? Number(campaign.totalRaised) : 0
-                return sum + raised
-            }, 0),
-            activeCampaigns: campaigns.filter(campaign => {
-                const now = Math.floor(Date.now() / 1000)
-                const launchTime = campaign.launchTime ? parseInt(campaign.launchTime) : now
-                const deadline = campaign.deadline ? parseInt(campaign.deadline) : now
-                return now >= launchTime && now <= deadline && campaign.status === 'active'
-            }).length,
-            averageProgress: campaigns.length > 0
-                ? campaigns.reduce((sum, campaign) => {
-                    if (!campaign.totalRaised || !campaign.goalAmount) return sum
-                    const progress = (Number(campaign.totalRaised) / Number(campaign.goalAmount)) * 100
-                    return sum + (isNaN(progress) ? 0 : progress)
-                }, 0) / campaigns.length
-                : 0
-        }
-    }
-
-    if (!address) {
+    if (!authenticated && !address) {
         return (
             <div className="flex min-h-screen bg-gray-50">
                 <SideBar />
@@ -197,6 +167,37 @@ export default function DashboardPage() {
                 </div>
             </div>
         )
+    }
+
+    if (loading || loadingFavorites) {
+        return (
+            <div className="flex min-h-screen items-center justify-center">
+                <div className="text-lg">Loading...</div>
+            </div>
+        )
+    }
+
+    const calculateStats = (campaigns: Campaign[]) => {
+        return {
+            totalCampaigns: campaigns.length,
+            totalRaised: campaigns.reduce((sum, campaign) => {
+                const raised = campaign.totalRaised ? Number(campaign.totalRaised) : 0
+                return sum + raised
+            }, 0),
+            activeCampaigns: campaigns.filter(campaign => {
+                const now = Math.floor(Date.now() / 1000)
+                const launchTime = campaign.launchTime ? parseInt(campaign.launchTime) : now
+                const deadline = campaign.deadline ? parseInt(campaign.deadline) : now
+                return now >= launchTime && now <= deadline && campaign.status === 'active'
+            }).length,
+            averageProgress: campaigns.length > 0
+                ? campaigns.reduce((sum, campaign) => {
+                    if (!campaign.totalRaised || !campaign.goalAmount) return sum
+                    const progress = (Number(campaign.totalRaised) / Number(campaign.goalAmount)) * 100
+                    return sum + (isNaN(progress) ? 0 : progress)
+                }, 0) / campaigns.length
+                : 0
+        }
     }
 
     return (

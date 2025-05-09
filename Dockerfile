@@ -1,29 +1,26 @@
 # syntax=docker/dockerfile:1
-FROM node:20-slim
+FROM node:20-alpine3.20 AS devrunner
+RUN apk add --no-cache libc6-compat git \
+    jq bash zip mc expect curl python3 openssl
+
 WORKDIR /app
 
-# Install system dependencies and clean up
-RUN apt-get update -y && \
-    apt-get install -y openssl && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
 
 # Install pnpm first
 RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN npm install -g tsx
+RUN git config --global --add safe.directory /app
 
-# Create non-root user for security
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs --home /app && \
-    mkdir -p /app/.next /app/node_modules && \
-    chown -R nextjs:nodejs /app
+RUN touch /root/.bashrc \
+    && echo 'PS1="aka-app \w # "' \
+    >> /root/.bashrc
 
-# Copy package files
-COPY --chown=nextjs:nodejs package.json pnpm-lock.yaml* ./
+VOLUME /app
+VOLUME /app/.next
+VOLUME /app/.pnpm-store
 
-# Install dependencies as nextjs user
-USER nextjs
 ENV NODE_ENV=development
-RUN pnpm install
+ENV PORT=3000
 
 # Expose port
 EXPOSE 3000

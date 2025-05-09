@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { useAccount, useConnectorClient } from "wagmi"
+import {useAccount} from '@/contexts'
+import { useConnectorClient } from "wagmi"
 import { type Address, type Chain, type Client, type Transport } from "viem"
 import { ethers, providers, Signer } from "ethers"
 import { AlloABI } from "@/contracts/abi/qf/Allo"

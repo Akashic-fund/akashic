@@ -18,6 +18,7 @@ By leveraging decentralized storage (IPFS/Filecoin) and transparent, community-d
 ## Quick Start (Local Development)
 
 1. **Clone and Install Dependencies:**
+
    ```bash
    git clone <repository-url>
    cd akashic
@@ -25,17 +26,22 @@ By leveraging decentralized storage (IPFS/Filecoin) and transparent, community-d
    ```
 
 2. **Set Up Environment Variables:**
+
    ```bash
    cp env.template .env.local
    ```
+
    Edit `.env.local` and populate the required variables. Refer to `env.template` for all available options and their descriptions.
 
 3. **Start Development Environment:**
+
    ```bash
    docker-compose up
    ```
+
    This will start:
-   - PostgreSQL database (accessible at `localhost:5432`)
+
+   - PostgreSQL database
    - Next.js development server (accessible at [http://localhost:3000](http://localhost:3000))
 
 4. **Initialize Database (in a new terminal):**
@@ -44,16 +50,86 @@ By leveraging decentralized storage (IPFS/Filecoin) and transparent, community-d
    docker-compose exec app pnpm prisma db seed
    ```
 
+5. **Setup Development Wallet**
+
+Create a browser profile and install a Wallet like metamask
+
+visit https://faucet.celo.org/alfajores and add the testnet
+copy your account-address into the form and claim CELO
+
+## Enhanced Development Setup
+
+In order to efficently and securely develop akashic, there is a app-shell
+available that uses the same environment as the next-application. While it is
+possible to do things pnpm install in the host and execute some scripts (eg pnpm
+prisma db migrate) directly from the host (`docker compose exec app COMMAND`) it
+is often more consistent to completely enter a development-environment that
+matches the later production environment as closely as possible while still in
+full control without installing all the required tools for the project in the
+host (which often results in conflicts with other projects).
+
+To enable the developer to do so, the docker-compose file is providing both a
+`app`-service and a `app-shell`-service. The developer will enter the cloned
+directory and execute `docker compose up` as the documentation mentions before
+and the result is that only the app is started in develop-mode (with
+hot-reloading enabled).
+
+### Environment Setup
+
+For the docker environment it is possible to configure various details. This is
+strictly not required as the docker-compose file contains defaults. All of the
+variables displayed here are optional
+```bash
+touch .env
+# postgres configuration, the defaults are fine, the postgres is only reachable by the app
+echo "POSTGRES_USER=somebody" >> .env
+echo "POSTGRES_PASSWORD=somepassword" >> .env
+echo "POSTGRES_DB=somedatabasename" >> .env
+# postgres admin configuration: a web-based tool to query the database
+echo "PGADMIN_DEFAULT_EMAIL=some@email.com" >> .env
+echo "PGADMIN_DEFAULT_PASSWORD=someotherpassword" >> .env
+echo "PGADMIN_PORT=1235" >> .env
+# app configuration: change the default port 3000
+echo "DEV_APP_PORT=1234" >> .env
+```
+
+### Development Container
+
+In order to run commands, use the shell service: `docker compose run --rm
+app-shell /bin/bash` This will start the required services (database,app) and
+drop you in a shell that has the correct node version, pnpm et al installed. Its
+a alpine-based minimal container with some development tools. You are root in
+that container, you may install more software (`apk add`) which is gone once you
+close the terminal. You may modify all files of the app (using the pnpm scripts
+or your own cli-magic). In case you _create_ files, be aware that you are root,
+this means the file wont be writeable to your host-user (eg your editor) until
+you correct the ownership. `pnpm chown` fixes that up - a thing that happens
+when prisma creates migrations for example. The develop container prompt is
+prefixed with `aka-app` so you immediately see that you are not in your host.
+
+### Development Database Management
+
+Sometimes it is required to inquire the postgres database directly. If you
+prefer a desktop-tool, just expose the port of the database-container to your
+host, but ideally all you need is a browser. To start the pgadmin database tool,
+run `docker compose --profile develop up -d`. after a few seconds navigate to
+https://localhost:3001 (PGADMIN_PORT) and see a login, the default is
+`admin@local.host` with the password `admin`. After you are signed in, connect
+to a server host: `database`, username&password `akashic`. Now you can browse
+the table schema, show and modify the data and execute queries.
+
 ## Database Setup Troubleshooting
 
 If you encounter database-related issues, follow these steps:
 
 1. **Generate Prisma Client:**
+
    ```bash
    docker-compose exec app pnpm prisma generate
    ```
 
 2. **Apply Migrations:**
+
    ```bash
    docker-compose exec app pnpm prisma migrate deploy
    ```
@@ -64,6 +140,7 @@ If you encounter database-related issues, follow these steps:
    ```
 
 Common issues and their solutions:
+
 - **Missing Query Engine:** Update `binaryTargets` in `prisma/schema.prisma` and regenerate the client
 - **Missing Tables:** Ensure migrations are applied before seeding
 - **Seeding Failures:** Verify database is running and migrations are complete
@@ -73,12 +150,13 @@ Common issues and their solutions:
   ```
 - **Database Reset:** If you need to completely reset the database:
   ```bash
-  docker-compose down -v  # This removes all volumes
-  docker-compose up -d    # Start fresh
-  docker-compose exec app pnpm prisma generate  # Generate Prisma client
-  docker-compose exec app pnpm prisma migrate dev  # Reapply migrations
-  docker-compose exec app pnpm prisma db seed     # Reseed the database
+  docker compose down -v  # This removes all volumes
+  docker compose up -d    # Start fresh
+  docker compose exec app pnpm prisma generate  # Generate Prisma client
+  docker compose exec app pnpm prisma migrate dev  # Reapply migrations
+  docker compose exec app pnpm prisma db seed     # Reseed the database
   ```
+
 
 ## Available Scripts
 

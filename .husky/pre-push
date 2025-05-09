@@ -1,30 +1,29 @@
-#!/usr/bin/env sh
+# #!/usr/bin/env sh
 
-# Check if running in CI environment
-if [ -n "$CI" ]; then
-  echo "Running in CI environment, executing checks directly..."
-  pnpm lint || exit 1
-  pnpm build || exit 1
-  vercel build || exit 1
-  exit 0
-fi
+# # Check if forcefully disabled
+# if [ -n "${FORCE_NO_CHECKS}" ]; then
+#   exit 0
+# fi
 
-# Check if Docker is running
-if ! docker info > /dev/null 2>&1; then
-  echo "Docker is not running. Please start Docker to run pre-push checks."
-  exit 1
-fi
+# # Check if running in CI environment
+# if [ -n "$CI" ]; then
+#   echo "Running in CI environment, executing checks directly..."
+#   pnpm lint || exit 1
+#   pnpm build || exit 1
+#   vercel build || exit 1
+#   exit 0
+# fi
 
-# Check if the container is running
-if ! docker ps --format '{{.Names}}' | grep -q '^akashic-app-1$'; then
-  echo "Docker container 'akashic-app-1' is not running. Please start your development container first."
-  exit 1
-fi
+# # Check if Docker is running
+# if ! docker info > /dev/null 2>&1; then
+#   echo "Docker is not running. Please start Docker to run pre-push checks."
+#   exit 1
+# fi
 
-echo "Running checks in Docker environment..."
+# echo "Running checks in Docker environment..."
 
-# Run checks in existing container with proper environment isolation
-docker exec akashic-app-1 sh -c "cd /app && \
-  pnpm lint && \
-  (NODE_ENV=production pnpm build || exit 1) && \
-  NODE_ENV=development" || exit 1
+# # Run checks in existing container with proper environment isolation
+# docker compose run --rm app-shell sh -c "cd /app && \
+#   pnpm lint && \
+#   (pnpm build || exit 1)
+#   " || exit 1

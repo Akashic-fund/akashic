@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useWallets } from '@privy-io/react-auth';
 import { useToast } from './use-toast';
-import { celoAlfajores } from 'wagmi/chains';
+import { chainConfig } from '@/config/chain';
 
 interface ProviderRpcError extends Error {
     code: number;
@@ -29,7 +29,7 @@ export function useNetworkCheck() {
     const checkNetwork = useCallback(async (provider: EthereumProvider) => {
         try {
             const chainId = await provider.request({ method: 'eth_chainId' });
-            const correctNetwork = chainId === `0x${celoAlfajores.id.toString(16)}`;
+            const correctNetwork = chainId === chainConfig.chainId.hex;
             setIsCorrectNetwork(correctNetwork);
             return correctNetwork;
         } catch (error) {
@@ -45,7 +45,7 @@ export function useNetworkCheck() {
 
         try {
             const provider = await wallet.getEthereumProvider() as EthereumProvider;
-            const chainIdHex = `0x${celoAlfajores.id.toString(16)}`;
+            const chainIdHex = chainConfig.chainId.hex;
 
             try {
                 await provider.request({
@@ -64,13 +64,7 @@ export function useNetworkCheck() {
                     try {
                         await provider.request({
                             method: 'wallet_addEthereumChain',
-                            params: [{
-                                chainId: chainIdHex,
-                                chainName: celoAlfajores.name,
-                                nativeCurrency: celoAlfajores.nativeCurrency,
-                                rpcUrls: [process.env.NEXT_PUBLIC_RPC_URL || celoAlfajores.rpcUrls.default.http[0]],
-                                blockExplorerUrls: [celoAlfajores.blockExplorers.default.url]
-                            }],
+                            params: [chainConfig.getAddChainParams()],
                         });
                         // Check network again after adding
                         await checkNetwork(provider);
@@ -111,7 +105,7 @@ export function useNetworkCheck() {
 
                 // Listen for network changes
                 const handleChainChanged = async (newChainId: unknown) => {
-                    const isCorrect = newChainId === `0x${celoAlfajores.id.toString(16)}`;
+                    const isCorrect = newChainId === chainConfig.chainId.hex;
                     setIsCorrectNetwork(isCorrect);
                 };
 

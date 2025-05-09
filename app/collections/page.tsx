@@ -6,7 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { Plus, Search } from 'lucide-react'
-import { usePrivy } from '@privy-io/react-auth'
+import { useAuth } from "@/contexts";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { toast } from '@/hooks/use-toast'
 
@@ -24,7 +24,7 @@ interface PlatformCollection {
 
 export default function CollectionsPage() {
     const { userCollections, isLoading, refreshCollections } = useCollection()
-    const { authenticated, login, user } = usePrivy()
+    const { authenticated, login, address } = useAuth()
     const [searchTerm, setSearchTerm] = useState('')
     const [platformCollections, setPlatformCollections] = useState<PlatformCollection[]>([])
     const [loadingPlatform, setLoadingPlatform] = useState(true)
@@ -88,7 +88,7 @@ export default function CollectionsPage() {
                 },
                 body: JSON.stringify({
                     name: newCollectionName,
-                    userAddress: user?.wallet?.address,
+                    userAddress: address,
                 }),
             })
 
