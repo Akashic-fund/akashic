@@ -15,16 +15,37 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApplyToRound } from '@/components/apply-to-round';
 import { prisma } from '@/lib/prisma';
-import type {
-  Round as PrismaRound,
-  Campaign,
-} from '@/.generated/prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 import { ROUND_STATUS_MAP, getRoundStatus } from '@/types/round';
 import { CheckWalletServer } from '@/components/check-wallet-server';
 
-interface RoundWithCampaigns extends PrismaRound {
+interface RoundWithCampaigns {
+  id: number;
+  title: string;
+  description: string;
+  tags: string[];
+  matchingPool: Decimal;
+  applicationStart: Date;
+  applicationClose: Date;
+  startDate: Date;
+  endDate: Date;
+  blockchain: string;
+  logoUrl: string | null;
+  createdAt: Date;
+  managerAddress: string;
+  poolId: bigint | null;
+  profileId: string;
+  strategyAddress: string;
+  tokenAddress: string;
+  tokenDecimals: number;
+  transactionHash: string | null;
+  updatedAt: Date;
   roundCampaigns: {
-    Campaign: Pick<Campaign, 'id' | 'slug' | 'title'>;
+    Campaign: {
+      id: number;
+      slug: string | null;
+      title: string;
+    };
   }[];
 }
 

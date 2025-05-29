@@ -245,6 +245,363 @@ export default function CreateRoundPage() {
     },
   });
 
+  // --- Helper: Trigger Pool Creation ---
+  const triggerCreatePool = useCallback(
+    async (data: RoundFormData, strategyAddr: Address) => {
+      console.log(
+        '[Trigger Pool] Starting pool creation with strategy:',
+        strategyAddr,
+      );
+      setStatus('creating_pool');
+      setStatusMessage('Preparing pool creation transaction...');
+
+      if (!connectedAddress || !chainId) {
+        setStatus('error');
+        setStatusMessage('Cannot create pool: Wallet disconnected.');
+        setError('root', { type: 'manual', message: 'Wallet disconnected.' });
+        return;
+      }
+
+      try {
+        // 1. Prepare Data (Dates, Amounts, Metadata) needed for prepareCreatePoolArgs
+        const allocationStartTime = BigInt(
+          Math.floor(new Date(data.startDate).getTime() / 1000),
+        );
+        const allocationEndTime = BigInt(
+          Math.floor(new Date(data.endDate).getTime() / 1000),
+        );
+        const registrationStartTime = BigInt(
+          Math.floor(new Date(data.applicationStart).getTime() / 1000),
+        );
+        const registrationEndTime = BigInt(
+          Math.floor(new Date(data.applicationClose).getTime() / 1000),
+        );
+        const amount = parseUnits(data.matchingPool, data.tokenDecimals);
+
+        // Metadata structure
+        const metadataPointer = JSON.stringify({
+          title: data.title,
+          description: data.description,
+          logo: data.logoUrl || '', // Ensure logo is string or empty string
+        });
+        const metadata = {
+          protocol: 1n, // Allo protocol identifier (usually 1)
+          pointer: metadataPointer,
+        };
+
+        // Initialization data structure for KickstarterQF
+        const recipientInitializeData = {
+          metadataRequired: true, // Or false based on your needs
+          registrationStartTime,
+          registrationEndTime,
+        };
+        const initializationData = {
+          recipientInitializeData,
+          allocationStartTime,
+          allocationEndTime,
+          withdrawalCooldown: 0n, // Example: No cooldown
+          allowedTokens: [data.tokenAddress], // Only allow the pool's token
+          isUsingAllocationMetadata: false, // KickstarterQF likely doesn't use this
+        };
+
+        // Managers (just the creator for now)
+        const managers = [connectedAddress];
+
+        // 2. Prepare Arguments using the imported helper function
+        console.log('[Trigger Pool] Calling prepareCreatePoolArgs...');
+        const createPoolArgs = prepareCreatePoolArgs({
+          profileId: data.profileId,
+          strategyImplementationAddress: strategyAddr, // Use the deployed strategy address
+          initializationData: initializationData,
+          token: data.tokenAddress,
+          amount: amount,
+          metadata: metadata,
+          managers: managers,
+        });
+        console.log('[Trigger Pool] Args prepared:', createPoolArgs);
+
+        // 3. Send Transaction using writeContract
+        setStatusMessage('Please confirm pool creation in your wallet...');
+        writeContract(
+          {
+            address: createPoolArgs.address as `0x${string}`,
+            abi: createPoolArgs.abi,
+            functionName: createPoolArgs.functionName,
+            args: createPoolArgs.args,
+          },
+          {
+            onSuccess: (hash) => {
+              console.log('[Trigger Pool] Create pool tx sent:', hash);
+              setMonitoredTxHash(hash);
+            },
+            onError: (error) => {
+              // Error primarily handled by the useEffect hook watching writeContractError
+              console.error(
+                '[Trigger Pool] Create pool writeContract call failed:',
+                error,
+              );
+              // Set status/message here as a fallback
+              setStatus('error');
+              const shortMessage =
+                error instanceof BaseError
+                  ? error.shortMessage
+                  : error?.message;
+              setStatusMessage(`Pool creation failed: ${shortMessage}`);
+              setError('root', {
+                type: 'manual',
+                message: `Pool creation failed: ${shortMessage}`,
+              });
+            },
+          },
+        );
+      } catch (error) {
+        console.error('Error preparing create pool transaction:', error);
+        setStatus('error');
+        const message = `Failed to prepare pool creation: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        setStatusMessage(message);
+        setError('root', { type: 'manual', message });
+      }
+      // Add dependencies used inside the callback
+    },
+    [connectedAddress, chainId, setError, writeContract],
+  ); // Added AlloABI dependency
+
+  const saveRoundData = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async (confirmedReceipt: any, data: RoundFormData) => {
+      console.log('[Save Data] Starting save process...');
+      if (!connectedAddress || !chainId || !deployedStrategyAddress) {
+        setStatus('error');
+        setStatusMessage(
+          'Required information missing for saving (address, chainId, or strategyAddress).',
+        );
+        setError('root', {
+          type: 'manual',
+          message: 'Internal error: Missing data for saving.',
+        });
+        console.error('[Save Data] Missing required info:', {
+          connectedAddress,
+          chainId,
+          deployedStrategyAddress,
+        });
+        return;
+      }
+
+      // --- Parse Pool ID from Logs ---
+      let parsedPoolId: bigint | null = null;
+      try {
+        console.log(
+          '[Save Data] Parsing logs from receipt:',
+          confirmedReceipt.logs,
+        );
+        for (const log of confirmedReceipt.logs) {
+          if (log.address.toLowerCase() === ALLO_ADDRESS.toLowerCase()) {
+            try {
+              const decodedEvent = decodeEventLog({
+                abi: AlloABI, // Use Allo ABI
+                data: log.data,
+                topics: log.topics,
+              });
+              console.log('[Save Data] Decoded log:', decodedEvent);
+              if (decodedEvent.eventName === 'PoolCreated') {
+                // Adjust according to the actual event structure in AlloABI
+                parsedPoolId =
+                  (decodedEvent.args as { poolId?: bigint }).poolId ?? null;
+                console.log('[Save Data] Parsed Pool ID:', parsedPoolId);
+                if (parsedPoolId !== null) break; // Exit loop once found
+              }
+            } catch (decodeError) {
+              console.warn(
+                "[Save Data] Ignoring log that doesn't match Allo PoolCreated event:",
+                log,
+                decodeError,
+              );
+            }
+          }
+        }
+        if (parsedPoolId === null) {
+          throw new Error(
+            'PoolCreated event log not found or poolId missing in logs.',
+          );
+        }
+      } catch (error) {
+        console.error('[Save Data] Error parsing Pool ID:', error);
+        setStatus('error');
+        setStatusMessage(
+          `Transaction confirmed, but failed to parse Pool ID: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
+        setError('root', {
+          type: 'manual',
+          message: 'Failed to process transaction logs.',
+        });
+        return; // Stop processing
+      }
+
+      // --- Call Server Action to Save ---
+      console.log(
+        '[Save Data] Calling server action with Pool ID:',
+        parsedPoolId,
+      );
+      try {
+        const result = await saveRoundAction({
+          ...data, // Spread form data
+          poolId: parsedPoolId,
+          transactionHash: confirmedReceipt.transactionHash,
+          managerAddress: connectedAddress,
+          strategyAddress: deployedStrategyAddress,
+          blockchain: chain?.name || String(chainId), // Use chain name or ID
+        });
+
+        console.log('[Save Data] Server action result:', result);
+        if (result.success && result.data?.roundId) {
+          setStatus('success');
+          setStatusMessage(
+            `Round created and saved successfully! (ID: ${result.data.roundId})`,
+          );
+          setFinalRoundId(result.data.roundId);
+          confirmedTxDataRef.current = null; // Clear stored data on final success
+        } else {
+          setStatus('error');
+          setStatusMessage(
+            `Failed to save round data: ${result.error || 'Unknown server error'}`,
+          );
+          setError('root', {
+            type: 'manual',
+            message: `Failed to save round data: ${result.error}`,
+          });
+        }
+      } catch (serverError) {
+        console.error('[Save Data] Error calling server action:', serverError);
+        setStatus('error');
+        const message =
+          serverError instanceof Error
+            ? serverError.message
+            : 'Unknown server error';
+        setStatusMessage(`Failed to save round data: ${message}`);
+        setError('root', {
+          type: 'manual',
+          message: `Server error during save: ${message}`,
+        });
+      }
+    },
+    [connectedAddress, chainId, deployedStrategyAddress, setError, chain?.name],
+  );
+
+  // --- Check Allowance Logic ---
+  const handleCheckAllowance = useCallback(async () => {
+    if (
+      !connectedAddress ||
+      !tokenAddress ||
+      !matchingPool ||
+      Number(matchingPool) <= 0 ||
+      !z.string().startsWith('0x').safeParse(tokenAddress).success
+    ) {
+      setNeedsApproval(false);
+      setCurrentAllowance(0n);
+      setRequiredAmount(0n);
+      return;
+    }
+
+    setIsCheckingAllowance(true);
+    setNeedsApproval(false);
+    try {
+      const decimals = tokenDecimals || 6;
+      const amount = parseUnits(matchingPool, decimals);
+      setRequiredAmount(amount);
+
+      const allowance = await checkErc20Allowance({
+        tokenAddress: tokenAddress as Address,
+        ownerAddress: connectedAddress,
+        spenderAddress: ALLO_ADDRESS,
+        chainId: chainId,
+      });
+
+      setCurrentAllowance(allowance);
+      setNeedsApproval(allowance < amount);
+    } catch (error) {
+      console.error('Error checking allowance:', error);
+      setStatusMessage(
+        `Error checking allowance: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+      setNeedsApproval(true);
+    } finally {
+      setIsCheckingAllowance(false);
+    }
+  }, [connectedAddress, tokenAddress, matchingPool, tokenDecimals, chainId]);
+
+  // --- Approve Logic ---
+  const handleApprove = useCallback(async () => {
+    if (
+      !connectedAddress ||
+      !tokenAddress ||
+      !z.string().startsWith('0x').safeParse(tokenAddress).success
+    ) {
+      setError('root', {
+        type: 'manual',
+        message: 'Valid Token Address is required for approval.',
+      });
+      return;
+    }
+
+    setStatus('approving_token');
+    setStatusMessage('Requesting approval in wallet...');
+    setMonitoredTxHash(null);
+    resetWriteContract();
+
+    try {
+      const approveArgs = prepareApproveErc20Args({
+        tokenAddress: tokenAddress as Address,
+        spenderAddress: ALLO_ADDRESS,
+        amount: maxUint256,
+      });
+
+      setStatusMessage(
+        'Approving token... Tx sent. Waiting for confirmation...',
+      );
+      writeContract(
+        {
+          address: approveArgs.address as `0x${string}`,
+          abi: approveArgs.abi,
+          functionName: approveArgs.functionName,
+          args: approveArgs.args,
+        },
+        {
+          onSuccess: (hash) => {
+            setStatus('approving_token');
+            setStatusMessage(
+              'Approving token... Tx sent. Waiting for confirmation...',
+            );
+            setMonitoredTxHash(hash);
+          },
+          onError: (error) => {
+            // Error handled by the useEffect hook watching writeContractError
+            console.error('Approval writeContract call failed:', error);
+            setStatus('error');
+            const shortMessage =
+              error instanceof BaseError ? error.shortMessage : error?.message;
+            setStatusMessage(`Approval failed: ${shortMessage}`);
+            setError('root', {
+              type: 'manual',
+              message: `Approval failed: ${shortMessage}`,
+            });
+          },
+        },
+      );
+    } catch (error) {
+      console.error('Approval preparation failed:', error);
+      setStatus('error');
+      const message = `Failed to prepare approval: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      setStatusMessage(message);
+      setError('root', { type: 'manual', message });
+    }
+  }, [
+    writeContract,
+    resetWriteContract,
+    tokenAddress,
+    connectedAddress,
+    setError,
+  ]);
+
   useEffect(() => {
     console.log(
       `[Effect Check] Status: ${status}, Monitored Hash: ${monitoredTxHash}, isConfirming: ${isConfirming}, isConfirmed: ${isConfirmed}, getValues: ${getValues()}`,
@@ -378,6 +735,11 @@ export default function CreateRoundPage() {
     status,
     confirmError,
     resetWriteContract,
+    getValues,
+    handleCheckAllowance,
+    saveRoundData,
+    setError,
+    triggerCreatePool,
   ]);
 
   // --- Effect to handle hook errors (deployContract, writeContract) ---
@@ -443,371 +805,6 @@ export default function CreateRoundPage() {
     chainId,
     errors.root?.message,
     setError /*, ready, authenticated, user */,
-  ]);
-
-  // --- Helper: Trigger Pool Creation ---
-  const triggerCreatePool = useCallback(
-    async (data: RoundFormData, strategyAddr: Address) => {
-      console.log(
-        '[Trigger Pool] Starting pool creation with strategy:',
-        strategyAddr,
-      );
-      setStatus('creating_pool');
-      setStatusMessage('Preparing pool creation transaction...');
-
-      if (!connectedAddress || !chainId) {
-        setStatus('error');
-        setStatusMessage('Cannot create pool: Wallet disconnected.');
-        setError('root', { type: 'manual', message: 'Wallet disconnected.' });
-        return;
-      }
-
-      try {
-        // 1. Prepare Data (Dates, Amounts, Metadata) needed for prepareCreatePoolArgs
-        const allocationStartTime = BigInt(
-          Math.floor(new Date(data.startDate).getTime() / 1000),
-        );
-        const allocationEndTime = BigInt(
-          Math.floor(new Date(data.endDate).getTime() / 1000),
-        );
-        const registrationStartTime = BigInt(
-          Math.floor(new Date(data.applicationStart).getTime() / 1000),
-        );
-        const registrationEndTime = BigInt(
-          Math.floor(new Date(data.applicationClose).getTime() / 1000),
-        );
-        const amount = parseUnits(data.matchingPool, data.tokenDecimals);
-
-        // Metadata structure
-        const metadataPointer = JSON.stringify({
-          title: data.title,
-          description: data.description,
-          logo: data.logoUrl || '', // Ensure logo is string or empty string
-        });
-        const metadata = {
-          protocol: 1n, // Allo protocol identifier (usually 1)
-          pointer: metadataPointer,
-        };
-
-        // Initialization data structure for KickstarterQF
-        const recipientInitializeData = {
-          metadataRequired: true, // Or false based on your needs
-          registrationStartTime,
-          registrationEndTime,
-        };
-        const initializationData = {
-          recipientInitializeData,
-          allocationStartTime,
-          allocationEndTime,
-          withdrawalCooldown: 0n, // Example: No cooldown
-          allowedTokens: [data.tokenAddress], // Only allow the pool's token
-          isUsingAllocationMetadata: false, // KickstarterQF likely doesn't use this
-        };
-
-        // Managers (just the creator for now)
-        const managers = [connectedAddress];
-
-        // 2. Prepare Arguments using the imported helper function
-        console.log('[Trigger Pool] Calling prepareCreatePoolArgs...');
-        const createPoolArgs = prepareCreatePoolArgs({
-          profileId: data.profileId,
-          strategyImplementationAddress: strategyAddr, // Use the deployed strategy address
-          initializationData: initializationData,
-          token: data.tokenAddress,
-          amount: amount,
-          metadata: metadata,
-          managers: managers,
-        });
-        console.log('[Trigger Pool] Args prepared:', createPoolArgs);
-
-        // 3. Send Transaction using writeContract
-        setStatusMessage('Please confirm pool creation in your wallet...');
-        writeContract(
-          {
-            address: createPoolArgs.address as `0x${string}`,
-            abi: createPoolArgs.abi,
-            functionName: createPoolArgs.functionName,
-            args: createPoolArgs.args,
-          },
-          {
-            onSuccess: (hash) => {
-              console.log('[Trigger Pool] Create pool tx sent:', hash);
-              setMonitoredTxHash(hash);
-            },
-            onError: (error) => {
-              // Error primarily handled by the useEffect hook watching writeContractError
-              console.error(
-                '[Trigger Pool] Create pool writeContract call failed:',
-                error,
-              );
-              // Set status/message here as a fallback
-              setStatus('error');
-              const shortMessage =
-                error instanceof BaseError
-                  ? error.shortMessage
-                  : error?.message;
-              setStatusMessage(`Pool creation failed: ${shortMessage}`);
-              setError('root', {
-                type: 'manual',
-                message: `Pool creation failed: ${shortMessage}`,
-              });
-            },
-          },
-        );
-      } catch (error) {
-        console.error('Error preparing create pool transaction:', error);
-        setStatus('error');
-        const message = `Failed to prepare pool creation: ${error instanceof Error ? error.message : 'Unknown error'}`;
-        setStatusMessage(message);
-        setError('root', { type: 'manual', message });
-      }
-      // Add dependencies used inside the callback
-    },
-    [connectedAddress, chainId, setError, writeContract, AlloABI],
-  ); // Added AlloABI dependency
-
-  const saveRoundData = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async (confirmedReceipt: any, data: RoundFormData) => {
-      console.log('[Save Data] Starting save process...');
-      if (!connectedAddress || !chainId || !deployedStrategyAddress) {
-        setStatus('error');
-        setStatusMessage(
-          'Required information missing for saving (address, chainId, or strategyAddress).',
-        );
-        setError('root', {
-          type: 'manual',
-          message: 'Internal error: Missing data for saving.',
-        });
-        console.error('[Save Data] Missing required info:', {
-          connectedAddress,
-          chainId,
-          deployedStrategyAddress,
-        });
-        return;
-      }
-
-      // --- Parse Pool ID from Logs ---
-      let parsedPoolId: bigint | null = null;
-      try {
-        console.log(
-          '[Save Data] Parsing logs from receipt:',
-          confirmedReceipt.logs,
-        );
-        for (const log of confirmedReceipt.logs) {
-          if (log.address.toLowerCase() === ALLO_ADDRESS.toLowerCase()) {
-            try {
-              const decodedEvent = decodeEventLog({
-                abi: AlloABI, // Use Allo ABI
-                data: log.data,
-                topics: log.topics,
-              });
-              console.log('[Save Data] Decoded log:', decodedEvent);
-              if (decodedEvent.eventName === 'PoolCreated') {
-                // Adjust according to the actual event structure in AlloABI
-                parsedPoolId =
-                  (decodedEvent.args as { poolId?: bigint }).poolId ?? null;
-                console.log('[Save Data] Parsed Pool ID:', parsedPoolId);
-                if (parsedPoolId !== null) break; // Exit loop once found
-              }
-            } catch (decodeError) {
-              console.warn(
-                "[Save Data] Ignoring log that doesn't match Allo PoolCreated event:",
-                log,
-                decodeError,
-              );
-            }
-          }
-        }
-        if (parsedPoolId === null) {
-          throw new Error(
-            'PoolCreated event log not found or poolId missing in logs.',
-          );
-        }
-      } catch (error) {
-        console.error('[Save Data] Error parsing Pool ID:', error);
-        setStatus('error');
-        setStatusMessage(
-          `Transaction confirmed, but failed to parse Pool ID: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
-        setError('root', {
-          type: 'manual',
-          message: 'Failed to process transaction logs.',
-        });
-        return; // Stop processing
-      }
-
-      // --- Call Server Action to Save ---
-      console.log(
-        '[Save Data] Calling server action with Pool ID:',
-        parsedPoolId,
-      );
-      try {
-        const result = await saveRoundAction({
-          ...data, // Spread form data
-          poolId: parsedPoolId,
-          transactionHash: confirmedReceipt.transactionHash,
-          managerAddress: connectedAddress,
-          strategyAddress: deployedStrategyAddress,
-          blockchain: chain?.name || String(chainId), // Use chain name or ID
-        });
-
-        console.log('[Save Data] Server action result:', result);
-        if (result.success && result.data?.roundId) {
-          setStatus('success');
-          setStatusMessage(
-            `Round created and saved successfully! (ID: ${result.data.roundId})`,
-          );
-          setFinalRoundId(result.data.roundId);
-          confirmedTxDataRef.current = null; // Clear stored data on final success
-        } else {
-          setStatus('error');
-          setStatusMessage(
-            `Failed to save round data: ${result.error || 'Unknown server error'}`,
-          );
-          setError('root', {
-            type: 'manual',
-            message: `Failed to save round data: ${result.error}`,
-          });
-        }
-      } catch (serverError) {
-        console.error('[Save Data] Error calling server action:', serverError);
-        setStatus('error');
-        const message =
-          serverError instanceof Error
-            ? serverError.message
-            : 'Unknown server error';
-        setStatusMessage(`Failed to save round data: ${message}`);
-        setError('root', {
-          type: 'manual',
-          message: `Server error during save: ${message}`,
-        });
-      }
-    },
-    [
-      connectedAddress,
-      chainId,
-      deployedStrategyAddress,
-      setError,
-      chain?.name,
-      AlloABI,
-    ],
-  );
-
-  // --- Check Allowance Logic ---
-  const handleCheckAllowance = useCallback(async () => {
-    if (
-      !connectedAddress ||
-      !tokenAddress ||
-      !matchingPool ||
-      Number(matchingPool) <= 0 ||
-      !z.string().startsWith('0x').safeParse(tokenAddress).success
-    ) {
-      setNeedsApproval(false);
-      setCurrentAllowance(0n);
-      setRequiredAmount(0n);
-      return;
-    }
-
-    setIsCheckingAllowance(true);
-    setNeedsApproval(false);
-    try {
-      const decimals = tokenDecimals || 6;
-      const amount = parseUnits(matchingPool, decimals);
-      setRequiredAmount(amount);
-
-      const allowance = await checkErc20Allowance({
-        tokenAddress: tokenAddress as Address,
-        ownerAddress: connectedAddress,
-        spenderAddress: ALLO_ADDRESS,
-        chainId: chainId,
-      });
-
-      setCurrentAllowance(allowance);
-      setNeedsApproval(allowance < amount);
-    } catch (error) {
-      console.error('Error checking allowance:', error);
-      setStatusMessage(
-        `Error checking allowance: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
-      setNeedsApproval(true);
-    } finally {
-      setIsCheckingAllowance(false);
-    }
-  }, [connectedAddress, tokenAddress, matchingPool, tokenDecimals, chainId]);
-
-  // --- Approve Logic ---
-  const handleApprove = useCallback(async () => {
-    if (
-      !connectedAddress ||
-      !tokenAddress ||
-      !z.string().startsWith('0x').safeParse(tokenAddress).success
-    ) {
-      setError('root', {
-        type: 'manual',
-        message: 'Valid Token Address is required for approval.',
-      });
-      return;
-    }
-
-    setStatus('approving_token');
-    setStatusMessage('Requesting approval in wallet...');
-    setMonitoredTxHash(null);
-    resetWriteContract();
-
-    try {
-      const approveArgs = prepareApproveErc20Args({
-        tokenAddress: tokenAddress as Address,
-        spenderAddress: ALLO_ADDRESS,
-        amount: maxUint256,
-      });
-
-      setStatusMessage(
-        'Approving token... Tx sent. Waiting for confirmation...',
-      );
-      writeContract(
-        {
-          address: approveArgs.address as `0x${string}`,
-          abi: approveArgs.abi,
-          functionName: approveArgs.functionName,
-          args: approveArgs.args,
-        },
-        {
-          onSuccess: (hash) => {
-            setStatus('approving_token');
-            setStatusMessage(
-              'Approving token... Tx sent. Waiting for confirmation...',
-            );
-            setMonitoredTxHash(hash);
-          },
-          onError: (error) => {
-            // Error handled by the useEffect hook watching writeContractError
-            console.error('Approval writeContract call failed:', error);
-            setStatus('error');
-            const shortMessage =
-              error instanceof BaseError ? error.shortMessage : error?.message;
-            setStatusMessage(`Approval failed: ${shortMessage}`);
-            setError('root', {
-              type: 'manual',
-              message: `Approval failed: ${shortMessage}`,
-            });
-          },
-        },
-      );
-    } catch (error) {
-      console.error('Approval preparation failed:', error);
-      setStatus('error');
-      const message = `Failed to prepare approval: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      setStatusMessage(message);
-      setError('root', { type: 'manual', message });
-    }
-  }, [
-    writeContract,
-    tokenAddress,
-    requiredAmount,
-    chainId,
-    connectedAddress,
-    setError,
   ]);
 
   // --- Initial Allowance Check ---

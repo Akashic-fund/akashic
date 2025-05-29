@@ -44,22 +44,33 @@ export async function GET(
     const collectionWithDetails = {
       ...collection,
       isOwner,
-      items: collection.campaigns.map((campaignCollection) => {
-        const campaign = campaignCollection.campaign;
-        return {
-          itemId: campaign.campaignAddress || String(campaign.id),
-          itemType: 'campaign',
-          details: {
-            id: campaign.id,
-            title: campaign.title,
-            description: campaign.description,
-            slug: campaign.slug,
-            image:
-              campaign.images.find((img: CampaignImage) => img.isMainImage)
-                ?.imageUrl || '/images/placeholder.svg',
-          },
-        };
-      }),
+      items: collection.campaigns.map(
+        (campaignCollection: {
+          campaign: {
+            id: number;
+            title: string;
+            description: string;
+            slug: string;
+            campaignAddress: string | null;
+            images: Array<CampaignImage>;
+          };
+        }) => {
+          const campaign = campaignCollection.campaign;
+          return {
+            itemId: campaign.campaignAddress || String(campaign.id),
+            itemType: 'campaign',
+            details: {
+              id: campaign.id,
+              title: campaign.title,
+              description: campaign.description,
+              slug: campaign.slug,
+              image:
+                campaign.images.find((img: CampaignImage) => img.isMainImage)
+                  ?.imageUrl || '/images/placeholder.svg',
+            },
+          };
+        },
+      ),
     };
 
     return NextResponse.json({ collection: collectionWithDetails });

@@ -75,3 +75,8 @@ export function getRoundStatus(round: PrismaRound): RoundStatusKey {
 }
 
 // You might want other round-related types here too
+export enum RecipientStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}

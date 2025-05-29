@@ -19,7 +19,7 @@ import {
 } from '@/components/ui';
 import { Info } from 'lucide-react';
 import Image from 'next/image';
-import { IoLocationSharp } from 'react-icons/io5';
+import { MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { categories } from '@/lib/constant';
 import { Campaign } from '@/types/campaign';
@@ -84,7 +84,7 @@ export function CampaignItem({
                 <span className="font-medium">{`${campaign.owner.slice(0, 10)}...`}</span>
               </div>
               <div className="align flex self-start">
-                <IoLocationSharp className="mt-0.5 text-[#55DFAB]" />
+                <MapPin className="mt-0.5 text-[#55DFAB]" />
                 <span className="text-sm text-gray-900">
                   {campaign.location || 'Earth'}
                 </span>

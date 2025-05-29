@@ -47,6 +47,9 @@ importers:
       '@radix-ui/react-select':
         specifier: ^2.1.4
         version: 2.2.2(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-separator':
+        specifier: ^1.1.6
+        version: 1.1.6(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-slot':
         specifier: ^1.1.1
         version: 1.2.0(@types/react@18.3.20)(react@18.3.1)
@@ -146,9 +149,6 @@ importers:
       react-hook-form:
         specifier: ^7.54.2
         version: 7.56.1(react@18.3.1)
-      react-icons:
-        specifier: ^5.4.0
-        version: 5.5.0(react@18.3.1)
       react-intersection-observer:
         specifier: ^9.15.1
         version: 9.16.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1756,6 +1756,19 @@ packages:
       '@types/react-dom':
         optional: true
 
+  '@radix-ui/react-primitive@2.1.2':
+    resolution: {integrity: sha512-uHa+l/lKfxuDD2zjN/0peM/RhhSmRjr5YWdk/37EnSv1nJ88uvG85DPexSm8HdFQROd2VdERJ6ynXbkCFi+APw==}
+    peerDependencies:
+      '@types/react': '*'
+      '@types/react-dom': '*'
+      react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+      react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      '@types/react-dom':
+        optional: true
+
   '@radix-ui/react-progress@1.1.4':
     resolution: {integrity: sha512-8rl9w7lJdcVPor47Dhws9mUHRHLE+8JEgyJRdNWCpGPa6HIlr3eh+Yn9gyx1CnCLbw5naHsI2gaO9dBWO50vzw==}
     peerDependencies:
@@ -1808,8 +1821,30 @@ packages:
       '@types/react-dom':
         optional: true
 
+  '@radix-ui/react-separator@1.1.6':
+    resolution: {integrity: sha512-Izof3lPpbCfTM7WDta+LRkz31jem890VjEvpVRoWQNKpDUMMVffuyq854XPGP1KYGWWmjmYvHvPFeocWhFCy1w==}
+    peerDependencies:
+      '@types/react': '*'
+      '@types/react-dom': '*'
+      react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+      react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      '@types/react-dom':
+        optional: true
+
   '@radix-ui/react-slot@1.2.0':
     resolution: {integrity: sha512-ujc+V6r0HNDviYqIK3rW4ffgYiZ8g5DEHrGJVk4x7kTlLXRDILnKX9vAUYeIsLOoDpDJ0ujpqMkjH4w2ofuo6w==}
+    peerDependencies:
+      '@types/react': '*'
+      react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+
+  '@radix-ui/react-slot@1.2.2':
+    resolution: {integrity: sha512-y7TBO4xN4Y94FvcWIOIh18fM4R1A8S4q1jhoz4PNzOoHsFcN8pogcFmZrTYAm4F9VRUrWP/Mw7xSKybIeRI+CQ==}
     peerDependencies:
       '@types/react': '*'
       react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
@@ -4025,8 +4060,8 @@ packages:
   elliptic@6.6.1:
     resolution: {integrity: sha512-RaddvvMatK2LJHqFJ+YA4WysVN5Ita9E35botqIYspQ4TkRAlCicdzKOjlyv/1Za5RyTNn7di//eEV0uTAfe3g==}
 
-  emitter@http://github.com/component/emitter/archive/1.0.1.tar.gz:
-    resolution: {tarball: http://github.com/component/emitter/archive/1.0.1.tar.gz}
+  emitter@https://codeload.github.com/sindresorhus/component-emitter/tar.gz/refs/tags/1.0.1:
+    resolution: {tarball: https://codeload.github.com/sindresorhus/component-emitter/tar.gz/refs/tags/1.0.1}
     version: 1.0.1
 
   emoji-regex@8.0.0:
@@ -4706,8 +4741,8 @@ packages:
     resolution: {integrity: sha512-e1LleDykUz2Iu+MTYdkSsuWX8lvAjAcs0Xef0lNIu0S2wOAzuTxCJtcd9S3cijlwYF18EsU3rzb8jPVobxDh9Q==}
     engines: {node: '>=16 || 14 >=14.17'}
 
-  global@https://github.com/component/global/archive/v2.0.1.tar.gz:
-    resolution: {tarball: https://github.com/component/global/archive/v2.0.1.tar.gz}
+  global@https://codeload.github.com/component/global/tar.gz/refs/tags/v2.0.1:
+    resolution: {tarball: https://codeload.github.com/component/global/tar.gz/refs/tags/v2.0.1}
     version: 2.0.1
 
   globals@11.12.0:
@@ -6315,11 +6350,6 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
 
-  react-icons@5.5.0:
-    resolution: {integrity: sha512-MEFcXdkP3dLo8uumGI5xN3lDFNsRtrjbOEKDLD7yv76v4wpnEq2Lt2qeHaQOr34I/wPN3s3+N08WkQ+CW37Xiw==}
-    peerDependencies:
-      react: '*'
-
   react-intersection-observer@9.16.0:
     resolution: {integrity: sha512-w9nJSEp+DrW9KmQmeWHQyfaP6b03v+TdXynaoA964Wxt7mdR3An11z4NNCQgL4gKSK7y1ver2Fq+JKH6CWEzUA==}
     peerDependencies:
@@ -7709,8 +7739,8 @@ packages:
     resolution: {integrity: sha512-TEU+nJVUUnA4CYJFLvK5X9AOeH4KvDvhIfm0vV1GaQRtchnG0hgK5p8hw/xjv8cunWYCsiPCSDzObPyhEwq3KQ==}
     engines: {node: '>=0.4.0'}
 
-  xmlhttprequest@https://github.com/LearnBoost/node-XMLHttpRequest/archive/0f36d0b5ebc03d85f860d42a64ae9791e1daa433.tar.gz:
-    resolution: {tarball: https://github.com/LearnBoost/node-XMLHttpRequest/archive/0f36d0b5ebc03d85f860d42a64ae9791e1daa433.tar.gz}
+  xmlhttprequest@https://codeload.github.com/LearnBoost/node-XMLHttpRequest/tar.gz/0f36d0b5ebc03d85f860d42a64ae9791e1daa433:
+    resolution: {tarball: https://codeload.github.com/LearnBoost/node-XMLHttpRequest/tar.gz/0f36d0b5ebc03d85f860d42a64ae9791e1daa433}
     version: 1.5.0
     engines: {node: '>=0.4.0'}
 
@@ -9814,6 +9844,15 @@ snapshots:
       '@types/react': 18.3.20
       '@types/react-dom': 18.3.6(@types/react@18.3.20)
 
+  '@radix-ui/react-primitive@2.1.2(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@radix-ui/react-slot': 1.2.2(@types/react@18.3.20)(react@18.3.1)
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+    optionalDependencies:
+      '@types/react': 18.3.20
+      '@types/react-dom': 18.3.6(@types/react@18.3.20)
+
   '@radix-ui/react-progress@1.1.4(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@radix-ui/react-context': 1.1.2(@types/react@18.3.20)(react@18.3.1)
@@ -9888,7 +9927,23 @@ snapshots:
       '@types/react': 18.3.20
       '@types/react-dom': 18.3.6(@types/react@18.3.20)
 
+  '@radix-ui/react-separator@1.1.6(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@radix-ui/react-primitive': 2.1.2(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+    optionalDependencies:
+      '@types/react': 18.3.20
+      '@types/react-dom': 18.3.6(@types/react@18.3.20)
+
   '@radix-ui/react-slot@1.2.0(@types/react@18.3.20)(react@18.3.1)':
+    dependencies:
+      '@radix-ui/react-compose-refs': 1.1.2(@types/react@18.3.20)(react@18.3.1)
+      react: 18.3.1
+    optionalDependencies:
+      '@types/react': 18.3.20
+
+  '@radix-ui/react-slot@1.2.2(@types/react@18.3.20)(react@18.3.1)':
     dependencies:
       '@radix-ui/react-compose-refs': 1.1.2(@types/react@18.3.20)(react@18.3.1)
       react: 18.3.1
@@ -12734,7 +12789,7 @@ snapshots:
       minimalistic-assert: 1.0.1
       minimalistic-crypto-utils: 1.0.1
 
-  emitter@http://github.com/component/emitter/archive/1.0.1.tar.gz:
+  emitter@https://codeload.github.com/sindresorhus/component-emitter/tar.gz/refs/tags/1.0.1:
     dependencies:
       indexof: 0.0.1
 
@@ -12768,7 +12823,7 @@ snapshots:
       parseqs: 0.0.2
       parseuri: 0.0.2
       ws: 0.4.31(bufferutil@4.0.9)(utf-8-validate@5.0.10)
-      xmlhttprequest: https://github.com/LearnBoost/node-XMLHttpRequest/archive/0f36d0b5ebc03d85f860d42a64ae9791e1daa433.tar.gz
+      xmlhttprequest: https://codeload.github.com/LearnBoost/node-XMLHttpRequest/tar.gz/0f36d0b5ebc03d85f860d42a64ae9791e1daa433
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -13642,7 +13697,7 @@ snapshots:
       minipass: 4.2.8
       path-scurry: 1.11.1
 
-  global@https://github.com/component/global/archive/v2.0.1.tar.gz: {}
+  global@https://codeload.github.com/component/global/tar.gz/refs/tags/v2.0.1: {}
 
   globals@11.12.0: {}
 
@@ -13711,7 +13766,7 @@ snapshots:
 
   has-cors@1.0.3:
     dependencies:
-      global: https://github.com/component/global/archive/v2.0.1.tar.gz
+      global: https://codeload.github.com/component/global/tar.gz/refs/tags/v2.0.1
 
   has-flag@3.0.0: {}
 
@@ -15288,10 +15343,6 @@ snapshots:
     dependencies:
       react: 18.3.1
 
-  react-icons@5.5.0(react@18.3.1):
-    dependencies:
-      react: 18.3.1
-
   react-intersection-observer@9.16.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       react: 18.3.1
@@ -15800,7 +15851,7 @@ snapshots:
   socket.io-parser@2.1.2:
     dependencies:
       debug: 0.7.4
-      emitter: http://github.com/component/emitter/archive/1.0.1.tar.gz
+      emitter: https://codeload.github.com/sindresorhus/component-emitter/tar.gz/refs/tags/1.0.1
       isarray: 0.0.1
       json3: 3.2.6
     transitivePeerDependencies:
@@ -15809,7 +15860,7 @@ snapshots:
   socket.io-parser@2.2.0:
     dependencies:
       debug: 0.7.4
-      emitter: http://github.com/component/emitter/archive/1.0.1.tar.gz
+      emitter: https://codeload.github.com/sindresorhus/component-emitter/tar.gz/refs/tags/1.0.1
       isarray: 0.0.1
       json3: 3.2.6
     transitivePeerDependencies:
@@ -16920,7 +16971,7 @@ snapshots:
 
   xmlhttprequest-ssl@2.1.2: {}
 
-  xmlhttprequest@https://github.com/LearnBoost/node-XMLHttpRequest/archive/0f36d0b5ebc03d85f860d42a64ae9791e1daa433.tar.gz: {}
+  xmlhttprequest@https://codeload.github.com/LearnBoost/node-XMLHttpRequest/tar.gz/0f36d0b5ebc03d85f860d42a64ae9791e1daa433: {}
 
   xtend@4.0.2: {}
 

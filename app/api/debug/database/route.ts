@@ -27,13 +27,15 @@ export async function GET() {
       ...debugInfo,
       campaignStatusEnumExists: enumCheck,
       statusValuesInDB: statusCheck,
-      message: "Database verification complete - Schema is correct!"
+      message: 'Database verification complete - Schema is correct!',
     });
-
   } catch (error) {
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Unknown error',
-      databaseUrl: process.env.DATABASE_URL?.replace(/:[^:@]*@/, ':***@'),
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        databaseUrl: process.env.DATABASE_URL?.replace(/:[^:@]*@/, ':***@'),
+      },
+      { status: 500 },
+    );
   }
-} 
+}

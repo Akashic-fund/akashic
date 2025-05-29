@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { useAccount } from '@/contexts';
 import { Button } from '@/components/ui/button';
@@ -81,14 +81,18 @@ export function CampaignDetailTabRewardsClient({
   const [defaultTokenURI, setDefaultTokenURI] = useState<string>('');
   const [minDonationAmount, setMinDonationAmount] = useState<string>('0.01');
 
-  console.log(campaignId, campaignSlug, address, isConnected);
+  // Add this to your component to store contract details
+  const [nftContractDetails, setNftContractDetails] = useState<{
+    name: string;
+    symbol: string;
+    campaignName: string;
+    campaignId: string;
+    campaignOwner: string;
+    campaignTreasury: string;
+    campaignDefaultTokenURI: string;
+  } | null>(null);
 
-  useEffect(() => {
-    // Check for NFT contract when component loads
-    if (campaignId && address) {
-      getNFTAddress(campaignId);
-    }
-  }, [campaignId, address]);
+  console.log(campaignId, campaignSlug, address, isConnected);
 
   const {
     writeContract,
@@ -111,35 +115,26 @@ export function CampaignDetailTabRewardsClient({
 
   console.log('useWaitForTransactionReceipt', isConfirming, isConfirmed);
 
-  // Check if there's a Numbers Protocol NFT URI  & IPFS NID in localStorage
-  useEffect(() => {
-    const uri = localStorage.getItem('numbersProtocolNftUri');
-    const ipfs = localStorage.getItem('ipfsNid');
-    console.log('ipfs', ipfs, 'uri', uri);
-    if (ipfs) {
-      setIPFSNid(ipfs);
-      setNumbersProtocolUri(uri);
-      setStep(4); // Skip to the final step if we already have a URI
-    }
-  }, []);
-
   // Handle file selection
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
-      setFile(selectedFile);
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files[0]) {
+        const selectedFile = e.target.files[0];
+        setFile(selectedFile);
 
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(selectedFile);
-    }
-  };
+        // Create preview URL
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPreviewUrl(reader.result as string);
+        };
+        reader.readAsDataURL(selectedFile);
+      }
+    },
+    [],
+  );
 
   // Step 1-2: Handle upload and verification
-  const handleVerifyImage = async () => {
+  const handleVerifyImage = useCallback(async () => {
     if (!file) {
       toast({
         title: 'Error',
@@ -208,10 +203,10 @@ export function CampaignDetailTabRewardsClient({
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [toast, file]);
 
   // Step 3: Mint NFT with Numbers Protocol and get nid(ipfs hash)
-  const handleMintNFT = async () => {
+  const handleMintNFT = useCallback(async () => {
     if (!file || !signatureData) {
       toast({
         title: 'Error',
@@ -303,10 +298,10 @@ export function CampaignDetailTabRewardsClient({
     } finally {
       setIsMinting(false);
     }
-  };
+  }, [toast, file, signatureData, campaignSlug]);
 
   // Step 4: Deploy and mint NFT using Akashic contracts with IPFS hash
-  const handleCampaignNFTMint = async () => {
+  const handleCampaignNFTMint = useCallback(async () => {
     if (!ipfsNid || !address) {
       toast({
         title: 'Error',
@@ -332,7 +327,7 @@ export function CampaignDetailTabRewardsClient({
       });
 
       // Call the contract deployment function
-      const result = await writeContract({
+      const result = writeContract({
         address: CAMPAIGN_NFT_FACTORY as `0x${string}`,
         abi: CampaignNFTFactory,
         functionName: 'createCampaignNFT',
@@ -367,10 +362,18 @@ export function CampaignDetailTabRewardsClient({
       });
       setIsDeploying(false);
     }
-  };
+  }, [
+    toast,
+    address,
+    campaignId,
+    campaignSlug,
+    ipfsNid,
+    numbersProtocolUri,
+    writeContract,
+  ]);
 
   // Instead, use a more direct approach with the writeContract hook
-  const handleMintFromDeployedContract = async () => {
+  const handleMintFromDeployedContract = useCallback(async () => {
     if (!deployedContractAddress || !address) {
       toast({
         title: 'Error',
@@ -406,7 +409,46 @@ export function CampaignDetailTabRewardsClient({
       });
       setIsMintingFromContract(false);
     }
-  };
+  }, [toast, address, deployedContractAddress, writeContract]);
+  // Update the getNFTContractDetails function to accept an address parameter
+  const getNFTContractDetails = useCallback(
+    async (contractAddress = deployedContractAddress) => {
+      if (!contractAddress) return null;
+
+      try {
+        const provider = new ethers.providers.JsonRpcProvider(
+          chainConfig.rpcUrl,
+        );
+        const nftContract = new ethers.Contract(
+          contractAddress,
+          CampaignNFTabi,
+          provider,
+        );
+
+        // Fetch contract details
+        const contractName = await nftContract.name();
+        const contractSymbol = await nftContract.symbol();
+        const campaignName = await nftContract.campaignName();
+        const campaignDefaultTokenURI = await nftContract.defaultTokenURI();
+        const campaignOwner = await nftContract.owner();
+        const campaignTreasury = await nftContract.campaignTreasury();
+
+        return {
+          name: contractName,
+          symbol: contractSymbol,
+          campaignName: campaignName,
+          campaignId: campaignId,
+          campaignOwner: campaignOwner,
+          campaignTreasury: campaignTreasury,
+          campaignDefaultTokenURI: campaignDefaultTokenURI,
+        };
+      } catch (error) {
+        console.error('Error fetching NFT contract details:', error);
+        return null;
+      }
+    },
+    [campaignId, deployedContractAddress],
+  );
 
   // Add a useEffect to handle the minting status
   useEffect(() => {
@@ -428,128 +470,68 @@ export function CampaignDetailTabRewardsClient({
         variant: 'destructive',
       });
     }
-  }, [isSuccess, isError, isMintingFromContract, error]);
+  }, [toast, isSuccess, isError, isMintingFromContract, error]);
 
-  useEffect(() => {
-    if (campaignId) {
-      getNFTAddress(campaignId);
-      if (deployedContractAddress) {
-        setStep(5);
-      }
-    }
-  }, [campaignId]);
+  const getNFTAddress = useCallback(
+    async (campaignId: string) => {
+      try {
+        const provider = new ethers.providers.JsonRpcProvider(
+          chainConfig.rpcUrl,
+        );
+        const factoryContract = new ethers.Contract(
+          CAMPAIGN_NFT_FACTORY,
+          CampaignNFTFactory,
+          provider,
+        );
 
-  const getNFTAddress = async (campaignId: string) => {
-    try {
-      const provider = new ethers.providers.JsonRpcProvider(chainConfig.rpcUrl);
-      const factoryContract = new ethers.Contract(
-        CAMPAIGN_NFT_FACTORY,
-        CampaignNFTFactory,
-        provider,
-      );
+        const nftAddress = await factoryContract.getCampaignNFT(campaignId);
+        console.log(
+          'NFT contract address for campaign',
+          campaignId,
+          ':',
+          nftAddress,
+        );
 
-      const nftAddress = await factoryContract.getCampaignNFT(campaignId);
-      console.log(
-        'NFT contract address for campaign',
-        campaignId,
-        ':',
-        nftAddress,
-      );
+        // Check if the address is valid (not zero address)
+        if (
+          nftAddress &&
+          nftAddress !== '0x0000000000000000000000000000000000000000'
+        ) {
+          setDeployedContractAddress(nftAddress);
 
-      // Check if the address is valid (not zero address)
-      if (
-        nftAddress &&
-        nftAddress !== '0x0000000000000000000000000000000000000000'
-      ) {
-        setDeployedContractAddress(nftAddress);
+          // Fetch contract details immediately
+          const details = await getNFTContractDetails(nftAddress);
+          if (details) {
+            setNftContractDetails(details);
+            setShowMintingInterface(true);
+          }
 
-        // Fetch contract details immediately
-        const details = await getNFTContractDetails(nftAddress);
-        if (details) {
-          setNftContractDetails(details);
-          setShowMintingInterface(true);
+          toast({
+            title: 'NFT Contract Found',
+            description: `Contract address: ${nftAddress.slice(0, 6)}...${nftAddress.slice(-4)}`,
+            variant: 'default',
+          });
+        } else {
+          toast({
+            title: 'No NFT Contract',
+            description: "This campaign doesn't have an NFT contract yet.",
+            variant: 'default',
+          });
         }
 
+        return nftAddress;
+      } catch (error) {
+        console.error('Error getting NFT address:', error);
         toast({
-          title: 'NFT Contract Found',
-          description: `Contract address: ${nftAddress.slice(0, 6)}...${nftAddress.slice(-4)}`,
-          variant: 'default',
+          title: 'Error',
+          description: 'Failed to check for NFT contract',
+          variant: 'destructive',
         });
-      } else {
-        toast({
-          title: 'No NFT Contract',
-          description: "This campaign doesn't have an NFT contract yet.",
-          variant: 'default',
-        });
+        return null;
       }
-
-      return nftAddress;
-    } catch (error) {
-      console.error('Error getting NFT address:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to check for NFT contract',
-        variant: 'destructive',
-      });
-      return null;
-    }
-  };
-
-  // Clear the URI when component unmounts
-  useEffect(() => {
-    return () => {
-      // Don't clear immediately to allow for page navigation
-      // localStorage.removeItem('numbersProtocolNftUri');
-    };
-  }, []);
-
-  // Update the getNFTContractDetails function to accept an address parameter
-  const getNFTContractDetails = async (
-    contractAddress = deployedContractAddress,
-  ) => {
-    if (!contractAddress) return null;
-
-    try {
-      const provider = new ethers.providers.JsonRpcProvider(chainConfig.rpcUrl);
-      const nftContract = new ethers.Contract(
-        contractAddress,
-        CampaignNFTabi,
-        provider,
-      );
-
-      // Fetch contract details
-      const contractName = await nftContract.name();
-      const contractSymbol = await nftContract.symbol();
-      const campaignName = await nftContract.campaignName();
-      const campaignDefaultTokenURI = await nftContract.defaultTokenURI();
-      const campaignOwner = await nftContract.owner();
-      const campaignTreasury = await nftContract.campaignTreasury();
-
-      return {
-        name: contractName,
-        symbol: contractSymbol,
-        campaignName: campaignName,
-        campaignId: campaignId,
-        campaignOwner: campaignOwner,
-        campaignTreasury: campaignTreasury,
-        campaignDefaultTokenURI: campaignDefaultTokenURI,
-      };
-    } catch (error) {
-      console.error('Error fetching NFT contract details:', error);
-      return null;
-    }
-  };
-
-  // Add this to your component to store contract details
-  const [nftContractDetails, setNftContractDetails] = useState<{
-    name: string;
-    symbol: string;
-    campaignName: string;
-    campaignId: string;
-    campaignOwner: string;
-    campaignTreasury: string;
-    campaignDefaultTokenURI: string;
-  } | null>(null);
+    },
+    [toast, getNFTContractDetails],
+  );
 
   // Add this effect to fetch contract details when address is available
   useEffect(() => {
@@ -564,7 +546,43 @@ export function CampaignDetailTabRewardsClient({
 
       fetchContractDetails();
     }
-  }, [deployedContractAddress]);
+  }, [deployedContractAddress, getNFTContractDetails]);
+
+  useEffect(() => {
+    if (campaignId) {
+      getNFTAddress(campaignId);
+      if (deployedContractAddress) {
+        setStep(5);
+      }
+    }
+  }, [deployedContractAddress, campaignId, getNFTAddress]);
+
+  // Clear the URI when component unmounts
+  useEffect(() => {
+    return () => {
+      // Don't clear immediately to allow for page navigation
+      // localStorage.removeItem('numbersProtocolNftUri');
+    };
+  }, []);
+
+  // Check if there's a Numbers Protocol NFT URI  & IPFS NID in localStorage
+  useEffect(() => {
+    const uri = localStorage.getItem('numbersProtocolNftUri');
+    const ipfs = localStorage.getItem('ipfsNid');
+    console.log('ipfs', ipfs, 'uri', uri);
+    if (ipfs) {
+      setIPFSNid(ipfs);
+      setNumbersProtocolUri(uri);
+      setStep(4); // Skip to the final step if we already have a URI
+    }
+  }, []);
+
+  useEffect(() => {
+    // Check for NFT contract when component loads
+    if (campaignId && address) {
+      getNFTAddress(campaignId);
+    }
+  }, [campaignId, address, getNFTAddress]);
 
   return (
     <div className="space-y-6">

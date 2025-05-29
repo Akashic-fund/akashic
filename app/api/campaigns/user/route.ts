@@ -73,6 +73,7 @@ export async function GET(request: Request) {
         updatedAt: true,
         images: true,
       },
+      orderBy: { createdAt: 'desc' },
     });
 
     // Get campaign created events
@@ -115,7 +116,15 @@ export async function GET(request: Request) {
 
       // For campaigns with transaction hash, try to get blockchain data
       const event = events.find(
-        (e) =>
+        (e: {
+          transactionHash?: `0x${string}`;
+          args?: {
+            owner?: `0x${string}`;
+            launchTime?: bigint;
+            deadline?: bigint;
+            goalAmount?: bigint;
+          };
+        }) =>
           e.transactionHash?.toLowerCase() ===
           dbCampaign.transactionHash?.toLowerCase(),
       );
@@ -165,8 +174,8 @@ export async function GET(request: Request) {
     );
   }
 }
-
 export async function PATCH(request: Request) {
+  console.warn('[deprecated] use PATCH /api/campaigns instead');
   try {
     const body = await request.json();
     const { campaignId, status, transactionHash, campaignAddress } = body;

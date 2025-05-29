@@ -30,6 +30,7 @@ export interface DbCampaign {
     campaignId: number;
     creatorAddress: string;
   }[];
+  rounds?: { id: number; title: string }[];
 }
 
 export type CampaignDisplay = {

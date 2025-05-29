@@ -9,7 +9,7 @@ export function PageHeader({
   tags,
   children,
 }: {
-  title: string;
+  title?: string;
   message?: string;
   featured?: boolean;
   tags?: string[];
@@ -24,11 +24,13 @@ export function PageHeader({
         </div>,
       );
     }
-    items.push(
-      <h1 key="title" className="text-lg font-semibold sm:text-4xl">
-        {title}
-      </h1>,
-    );
+    if (typeof title === 'string') {
+      items.push(
+        <h1 key="title" className="text-lg font-semibold sm:text-4xl">
+          {title}
+        </h1>,
+      );
+    }
     return items;
   }, [message, title]);
   const navLine = useMemo(() => {
@@ -57,10 +59,10 @@ export function PageHeader({
     return items;
   }, [featured, tags, headLine]);
   return (
-    <header className="mx-auto inline items-center justify-between p-8">
+    <header className="mt-4 inline items-center justify-between p-8">
       {/* campaigns[slug] ^px-4 py-8 */}
       {/* campaigns[slug] <div className="space-y-4 pb-2> */}
-      <div className="flex min-h-[100px] flex-wrap items-center gap-4 md:min-h-0">
+      <div className="flex min-h-[75px] flex-wrap items-center gap-4 md:min-h-0">
         {/* campaigns[slug] <div className="flex items-center gap-2 py-1"> */}
         <div className="mb-8 flex flex-row items-center gap-2 py-1 md:mb-2 md:ml-4">
           <BackButton />

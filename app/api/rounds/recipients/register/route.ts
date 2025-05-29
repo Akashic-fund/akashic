@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
-import { RecipientStatus, Prisma } from '@/.generated/prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { RecipientStatus } from '@/.generated/prisma/client';
 // import { ApplicationStatus } from "@/lib/qfInteractions"
 
 // Define Zod schema for input validation
@@ -171,7 +172,7 @@ export async function POST(req: Request) {
 
     // Check specifically for Prisma unique constraint violation
     if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error instanceof PrismaClientKnownRequestError &&
       error.code === 'P2002'
     ) {
       errorMessage =

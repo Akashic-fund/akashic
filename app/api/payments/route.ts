@@ -17,10 +17,12 @@ export async function POST(req: Request) {
         amount: data.amount,
         token: data.token,
         campaignId: data.campaignId,
-        userId: user.id,
         isAnonymous: data.isAnonymous,
         status: data.status,
         transactionHash: data.transactionHash,
+        type: data.type,
+        user: { connect: { id: user.id } },
+        campaign: { connect: { id: data.campaignId } },
       },
     });
 

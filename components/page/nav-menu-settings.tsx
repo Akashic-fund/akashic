@@ -12,12 +12,12 @@ export function PageNavMenuSettings() {
   return (
     <nav className="flex-1 space-y-1 px-3">
       <Link
-        href="/settings"
+        href="/profile"
         className={cn(
           'flex items-center rounded-lg px-1 py-4 text-gray-800 hover:bg-gray-100 hover:text-gray-900',
           transition,
           isOpen ? 'px-4' : 'px-[9px]',
-          pathname === '/settings' && 'flex-grow bg-green-200 text-gray-900',
+          pathname === '/profile' && 'flex-grow bg-green-200 text-gray-900',
         )}
       >
         <div className="flex items-center">

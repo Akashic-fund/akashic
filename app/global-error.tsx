@@ -26,27 +26,23 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html>
-      <body>
-        <main className="flex min-h-screen flex-col items-center justify-center bg-background">
-          <div className="mx-auto max-w-md text-center">
-            <h1 className="mb-4 text-4xl font-bold">{errorTitle}</h1>
-            <p className="mb-8 text-muted-foreground">{errorMessage}</p>
-            <div className="flex justify-center gap-4">
-              <Button onClick={reset}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Try again
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Return Home
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </main>
-      </body>
-    </html>
+    <main className="flex min-h-screen flex-col items-center justify-center bg-background">
+      <div className="mx-auto max-w-md text-center">
+        <h1 className="mb-4 text-4xl font-bold">{errorTitle}</h1>
+        <p className="mb-8 text-muted-foreground">{errorMessage}</p>
+        <div className="flex justify-center gap-4">
+          <Button onClick={reset}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Try again
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Return Home
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </main>
   );
 }

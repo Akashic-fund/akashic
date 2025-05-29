@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { adminAddress } from '@/lib/constant';
+import { enableBypassContractAdmin } from '@/lib/develop';
 import { CampaignStatus } from '@/types/campaign';
 
 export async function POST(
@@ -20,14 +21,16 @@ export async function POST(
     const { adminAddress: requestAddress, treasuryAddress } = await req.json();
 
     // Verify admin
-    if (
-      !requestAddress ||
-      requestAddress.toLowerCase() !== adminAddress?.toLowerCase()
-    ) {
-      return NextResponse.json(
-        { error: 'Unauthorized: Admin access only' },
-        { status: 401 },
-      );
+    if (!enableBypassContractAdmin) {
+      if (
+        !requestAddress ||
+        requestAddress.toLowerCase() !== adminAddress?.toLowerCase()
+      ) {
+        return NextResponse.json(
+          { error: 'Unauthorized: Admin access only' },
+          { status: 401 },
+        );
+      }
     }
 
     if (!treasuryAddress) {

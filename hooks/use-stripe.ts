@@ -3,7 +3,7 @@ import { useStripe, useElements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { type Stripe } from '@stripe/stripe-js';
 
-import { enableApiMock } from '@/lib/fetch';
+import { enableApiMock } from '@/lib/develop';
 import { mockStripeInstance } from '@/lib/test/mock-stripe';
 
 const debug = process.env.NODE_ENV !== 'production';
@@ -58,22 +58,22 @@ export function useStripePaymentCallback({ amount }: { amount: string }) {
 
       // Create customer
       debug && console.log('[Stripe] Creating customer');
-      const customerResponse = await fetch(`/api/crowdsplit/customers`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const customerResponse = await fetch(
+        `/api/crowdsplit/donation-customer`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email: 'user@example.com' }), // TODO: Get user email
         },
-        body: JSON.stringify({ email: 'user@example.com' }), // TODO: Get user email
-      });
-
+      );
       if (!customerResponse.ok) {
         const error = await customerResponse.json();
         debug && console.error('[Stripe] Customer creation failed:', error);
         throw new Error(error.message || 'Failed to create customer');
       }
-      const {
-        data: { id: customerId },
-      } = await customerResponse.json();
+      const { customerId } = await customerResponse.json();
       debug && console.log('[Stripe] Customer created with ID:', customerId);
 
       // Initialize payment
@@ -85,9 +85,9 @@ export function useStripePaymentCallback({ amount }: { amount: string }) {
         },
         body: JSON.stringify({
           amount: parseFloat(amount) * 100, // Convert to cents
-          customer_id: customerId,
+          customerId: customerId,
           currency: 'USD',
-          payment_method: 'CARD',
+          paymentMethod: 'CARD',
           provider: 'STRIPE',
         }),
       });
@@ -108,9 +108,7 @@ export function useStripePaymentCallback({ amount }: { amount: string }) {
         }
         throw new Error(errorMsg);
       }
-      const {
-        data: { id: transactionId },
-      } = await paymentResponse.json();
+      const { id: transactionId } = await paymentResponse.json();
       debug &&
         console.log(
           '[Stripe] Payment initialized with transaction ID:',
@@ -145,17 +143,12 @@ export function useStripePaymentCallback({ amount }: { amount: string }) {
         }
         throw new Error(errorMsg);
       }
-      const {
-        data: { metadata },
-      } = await confirmResponse.json();
+      const { clientSecret, publicKey } = await confirmResponse.json();
       debug && console.log('[Stripe] Payment confirmed successfully');
 
       // Initialize Stripe with the public key from Crowdsplit
       debug && console.log('[Stripe] Setting up Stripe instance');
-      setStripeData({
-        clientSecret: metadata.client_secret,
-        publicKey: metadata.public_key,
-      });
+      setStripeData({ clientSecret, publicKey });
       if (enableApiMock) {
         debug && console.log('[Stripe] Using mock Stripe instance');
         setStripePromise(
@@ -165,7 +158,7 @@ export function useStripePaymentCallback({ amount }: { amount: string }) {
         );
       } else {
         debug && console.log('[Stripe] Loading live Stripe instance');
-        setStripePromise(loadStripe(metadata.public_key));
+        setStripePromise(loadStripe(publicKey));
       }
     } catch (err) {
       debug && console.error('[Stripe] Payment process error:', err);

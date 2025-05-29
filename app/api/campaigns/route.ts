@@ -103,8 +103,8 @@ async function getCampaignCreatedEvents(
 
 type CampaignCreatedEvent = {
   args: {
-    identifierHash: `0x${string}`;
-    campaignInfoAddress: `0x${string}`;
+    identifierHash?: `0x${string}`;
+    campaignInfoAddress?: `0x${string}`;
   };
 };
 
@@ -269,6 +269,12 @@ export async function PATCH(request: Request) {
   try {
     const body = await request.json();
     const { status, transactionHash, campaignAddress, campaignId } = body;
+    if (!campaignId) {
+      return NextResponse.json(
+        { error: 'Campaign ID is required' },
+        { status: 400 },
+      );
+    }
 
     const campaign = await prisma.campaign.update({
       where: {
@@ -297,24 +303,40 @@ export async function GET(request: Request) {
     const status = searchParams.get('status') || 'active';
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
+    const rounds = searchParams.get('rounds') || 'false';
     const skip = (page - 1) * pageSize;
+
+    // status active should be enforced if access-token is not admin
+    const statusList =
+      status === 'active'
+        ? [CampaignStatus.ACTIVE]
+        : status === 'all'
+          ? [
+              CampaignStatus.DRAFT,
+              CampaignStatus.PENDING_APPROVAL,
+              CampaignStatus.COMPLETED,
+              CampaignStatus.ACTIVE,
+            ]
+          : [
+              CampaignStatus.PENDING_APPROVAL,
+              CampaignStatus.COMPLETED,
+              CampaignStatus.ACTIVE,
+            ];
 
     const [dbCampaigns, totalCount] = await Promise.all([
       prisma.campaign.findMany({
         where: {
           status: {
-            in:
-              status === 'active'
-                ? [CampaignStatus.ACTIVE]
-                : [
-                    CampaignStatus.PENDING_APPROVAL,
-                    CampaignStatus.COMPLETED,
-                    CampaignStatus.ACTIVE,
-                  ],
+            in: statusList,
           },
         },
         include: {
           images: true,
+          RoundCampaigns: {
+            include: {
+              Round: true,
+            },
+          },
         },
         skip,
         take: pageSize,
@@ -325,14 +347,7 @@ export async function GET(request: Request) {
       prisma.campaign.count({
         where: {
           status: {
-            in:
-              status === 'active'
-                ? [CampaignStatus.ACTIVE]
-                : [
-                    CampaignStatus.PENDING_APPROVAL,
-                    CampaignStatus.COMPLETED,
-                    CampaignStatus.ACTIVE,
-                  ],
+            in: statusList,
           },
         },
       }),
@@ -343,15 +358,37 @@ export async function GET(request: Request) {
     const events = await getCampaignCreatedEvents(client);
 
     const combinedCampaigns = dbCampaigns
-      .filter((campaign) => campaign.transactionHash)
-      .map((dbCampaign) => {
-        const event = events.find(
-          (onChainCampaign) =>
-            onChainCampaign.args?.campaignInfoAddress?.toLowerCase() ===
-            dbCampaign.campaignAddress?.toLowerCase(),
-        ) as CampaignCreatedEvent | undefined;
-        return formatCampaignData(dbCampaign, event);
-      })
+      .filter(
+        (
+          campaign: DbCampaign & {
+            RoundCampaigns?: Array<{ Round: { id: number; title: string } }>;
+          },
+        ) => campaign.transactionHash,
+      )
+      .map(
+        (
+          dbCampaign: DbCampaign & {
+            RoundCampaigns?: Array<{ Round: { id: number; title: string } }>;
+          },
+        ) => {
+          const event = events.find(
+            (onChainCampaign) =>
+              onChainCampaign.args?.campaignInfoAddress?.toLowerCase() ===
+              dbCampaign.campaignAddress?.toLowerCase(),
+          ) as CampaignCreatedEvent | undefined;
+          if (rounds === 'true') {
+            return formatCampaignData(
+              {
+                ...dbCampaign,
+                rounds:
+                  dbCampaign.RoundCampaigns?.map(({ Round }) => Round) ?? [],
+              },
+              event,
+            );
+          }
+          return formatCampaignData(dbCampaign, event);
+        },
+      )
       .filter(Boolean);
 
     return NextResponse.json({

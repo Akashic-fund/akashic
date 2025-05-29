@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { RecipientStatus } from '@/.generated/prisma/client';
+import { RecipientStatus } from '@/types/round';
 // import { ApplicationStatus } from "@/lib/qfInteractions"
 
 export async function POST(request: NextRequest) {
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update each recipient status
-    const updatePromises = updates.map(({ address }) =>
+    const updatePromises = updates.map(({ address }: { address: string }) =>
       prisma.roundCampaigns.updateMany({
         where: {
           roundId,

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAccount } from '@/contexts';
 import { type Address } from 'viem';
-import { RecipientStatus } from '@/.generated/prisma/client';
+import { RecipientStatus } from '@/types/round';
 
 import { Button } from '@/components/ui/button';
 import {

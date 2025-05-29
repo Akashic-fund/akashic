@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { crowdsplitRequest } from '@/app/api/crowdsplit/utils';
+import { crowdsplitService } from '@/lib/crowdsplit/service';
+import { CrowdsplitCreatePaymentPostRequest } from '@/lib/crowdsplit/api/types';
 
 export async function POST(request: NextRequest) {
   try {
-    const paymentData = await request.json();
+    const paymentData: CrowdsplitCreatePaymentPostRequest =
+      await request.json();
 
-    // Initialize payment in Crowdsplit using the utility function
-    const csRes = await crowdsplitRequest('/api/v1/payments', {
-      method: 'POST',
-      body: JSON.stringify(paymentData),
-    });
-
-    const data = await csRes.json();
-    return NextResponse.json(data, { status: csRes.status });
+    const crowdsplitPayment =
+      await crowdsplitService.createPayment(paymentData);
+    return NextResponse.json(
+      { success: true, id: crowdsplitPayment.id },
+      { status: 200 },
+    );
   } catch (error) {
     console.error('Crowdsplit payment error:', error);
     return NextResponse.json(

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import type { RoundCampaigns, Round } from '@/.generated/prisma/client';
 
 export async function GET(
   req: NextRequest,
@@ -19,7 +18,7 @@ export async function GET(
     }
 
     const rounds = roundCampaigns.map(
-      (rc: RoundCampaigns & { Round: Round }) => ({
+      (rc: { roundId: number; Round: { title: string } }) => ({
         id: rc.roundId,
         title: rc.Round.title,
       }),

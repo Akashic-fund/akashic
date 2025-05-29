@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { CheckCircle2, XCircle } from 'lucide-react';
-import { enableApiMock } from '@/lib/fetch';
+import { enableApiMock } from '@/lib/develop';
 import { mockStripeInstance } from '@/lib/test/mock-stripe';
 
 export function PaymentStatus() {

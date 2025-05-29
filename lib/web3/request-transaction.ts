@@ -1,4 +1,4 @@
-import { ethers } from 'ethers';
+import { BigNumber, ethers } from 'ethers';
 import { erc20Abi } from 'viem';
 import { USDC_ADDRESS } from '@/lib/constant';
 import { ConnectedWallet } from '@privy-io/react-auth';
@@ -62,10 +62,13 @@ export async function requestTransaction({
   const treasuryContract = new ethers.Contract(address!, treasuryABI, signer);
 
   debug && console.log('Estimating gas for pledge transaction...');
-  const estimatedGas = await treasuryContract.estimateGas.pledgeWithoutAReward(
-    userAddress,
-    amountInUSDC,
-  );
+  let estimatedGas = BigNumber.from(220000);
+  try {
+    estimatedGas = await treasuryContract.estimateGas.pledgeWithoutAReward(
+      userAddress,
+      amountInUSDC,
+    );
+  } catch {}
   debug && console.log('Estimated gas:', estimatedGas.toString());
 
   debug && console.log('Sending pledge transaction...');

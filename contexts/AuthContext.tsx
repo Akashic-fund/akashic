@@ -8,11 +8,12 @@ import React, {
   useEffect,
   useCallback,
 } from 'react';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { usePrivy } from '@privy-io/react-auth';
 import { adminAddress } from '@/lib/constant';
 const debug = process.env.NODE_ENV !== 'production';
 import { useAccount } from './AccountContext';
-
+import { useWallet } from '@/hooks/use-wallet';
+import { enableAdmin } from '@/lib/develop';
 interface PrivyUser {
   wallet?: {
     address?: string;
@@ -28,7 +29,15 @@ interface PrivyWallet {
 type EthereumProvider = {
   request: (args: {
     method: string;
-    params?: any[] | undefined;
+    params?:
+      | {
+          chainId: string;
+          chainName?: string;
+          nativeCurrency?: { decimals: number; name: string; symbol: string };
+          rpcUrls?: string[];
+          blockExplorerUrls?: string[];
+        }[]
+      | undefined;
   }) => Promise<unknown>;
 };
 
@@ -39,6 +48,7 @@ interface AuthContextType {
   wallet: PrivyWallet | null;
   isAdmin: boolean;
   isClient: boolean;
+  isReady: boolean;
   login: () => void;
   logout: () => Promise<void>;
   forceWalletConnection: () => Promise<boolean>;
@@ -51,6 +61,7 @@ const AuthContext = createContext<AuthContextType>({
   wallet: null,
   isAdmin: false,
   isClient: false,
+  isReady: false,
   login: () => {},
   logout: async () => {},
   forceWalletConnection: async () => false,
@@ -60,13 +71,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const { address: wagmiAddress } = useAccount();
-  const { user, authenticated, login, logout } = usePrivy();
-  const { wallets } = useWallets();
+  const { user, authenticated, login, logout, ready: isReady } = usePrivy();
   const [isClient, setIsClient] = useState(false);
   const [lastConnectionAttempt, setLastConnectionAttempt] = useState(0);
 
   // Get the primary wallet if available
-  const wallet = wallets && wallets.length > 0 ? wallets[0] : null;
+  const wallet = useWallet();
 
   // Try to get address from all possible sources
   // Priority: 1. Active wallet from wallets array, 2. User data, 3. Wagmi
@@ -126,7 +136,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       let resolvedAddress = null;
 
-      // Try to get from wallets array first
       if (wallet && (await wallet.isConnected?.())) {
         try {
           // Some wallet providers expose address directly
@@ -176,13 +185,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         });
 
       const adminStatus =
-        !!normalizedAddress && normalizedAddress === normalizedAdminAddress;
+        enableAdmin ||
+        (!!normalizedAddress && normalizedAddress === normalizedAdminAddress);
       setIsAdmin(adminStatus);
       debug && console.log('[AUTH] Admin status set to:', adminStatus);
     };
 
     getWalletAddress();
-  }, [wallet, user, wagmiAddress, wallets, isClient]);
+  }, [wallet, user, wagmiAddress, isClient]);
 
   // Debugging logs
   useEffect(() => {
@@ -194,30 +204,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           '[AUTH DEBUG] user.wallet?.address:',
           user?.wallet?.address,
         );
-      debug && console.log('[AUTH DEBUG] wallets:', wallets);
       debug && console.log('[AUTH DEBUG] primary wallet:', wallet);
       debug && console.log('[AUTH DEBUG] authenticated:', authenticated);
       debug && console.log('[AUTH DEBUG] final address:', address);
       debug && console.log('[AUTH DEBUG] isAdmin:', isAdmin);
       debug && console.log('[AUTH DEBUG] adminAddress:', adminAddress);
     }
-  }, [
-    wagmiAddress,
-    user,
-    wallets,
-    wallet,
-    authenticated,
-    address,
-    isAdmin,
-    isClient,
-    adminAddress,
-  ]);
+  }, [wagmiAddress, user, wallet, authenticated, address, isAdmin, isClient]);
 
   const value = useMemo(
     () => ({
       address,
       authenticated,
       user,
+      isReady,
       wallet,
       isAdmin,
       isClient,
@@ -229,6 +229,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       address,
       authenticated,
       user,
+      isReady,
       wallet,
       isAdmin,
       isClient,

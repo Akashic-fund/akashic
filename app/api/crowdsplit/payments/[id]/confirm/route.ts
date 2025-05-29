@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { crowdsplitRequest } from '@/app/api/crowdsplit/utils';
+import { crowdsplitService } from '@/lib/crowdsplit/service';
 
 export async function POST(
   request: NextRequest,
@@ -7,11 +7,12 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const csRes = await crowdsplitRequest(`/api/v1/payments/${id}/confirm`, {
-      method: 'POST',
-    });
-    const data = await csRes.json();
-    return NextResponse.json(data, { status: csRes.status });
+
+    const credentials = await crowdsplitService.confirmPayment({ id });
+    return NextResponse.json(
+      { success: true, ...credentials },
+      { status: 200 },
+    );
   } catch (error) {
     console.error('Crowdsplit payment confirm error:', error);
     return NextResponse.json(

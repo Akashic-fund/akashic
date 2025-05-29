@@ -13,8 +13,12 @@ import { useUserCampaigns } from '@/lib/hooks/useCampaigns';
 import { useUserFavourites } from '@/lib/hooks/useFavourites';
 import { DashboardNotAuthenticated } from '@/components/dashboard/not-authenticated';
 import { PageDashboard } from '@/components/page/dashboard';
+import { CampaignCreate } from '@/components/campaign/create';
+import { Button } from '@/components/ui';
+import { useState } from 'react';
 
 export default function DashboardPage() {
+  const [showCampaignCreate, setShowCampaignCreate] = useState(false);
   const { address, authenticated } = useAuth();
   const {
     data: campaigns,
@@ -62,7 +66,20 @@ export default function DashboardPage() {
       </PageDashboard>
     );
   }
-
+  if (showCampaignCreate) {
+    return (
+      <div className="mb-8">
+        <Button
+          variant="outline"
+          onClick={() => setShowCampaignCreate(false)}
+          className="mb-4"
+        >
+          ← Back to Dashboard
+        </Button>
+        <CampaignCreate />
+      </div>
+    );
+  }
   return (
     <PageDashboard>
       {!error && <DashboardOverview campaigns={campaigns} />}
@@ -82,14 +99,11 @@ export default function DashboardPage() {
           {error ? (
             <CampaignError error={error.message} />
           ) : campaigns?.length === 0 ? (
-            <CampaignEmpty />
+            <CampaignEmpty onCreate={() => setShowCampaignCreate(true)} />
           ) : (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {campaigns?.map((campaign: Campaign) => (
-                <CampaignCardDashboard
-                  key={campaign.address}
-                  campaign={campaign}
-                />
+                <CampaignCardDashboard key={campaign.id} campaign={campaign} />
               ))}
             </div>
           )}
