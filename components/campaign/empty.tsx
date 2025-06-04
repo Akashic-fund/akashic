@@ -3,8 +3,8 @@ import { Button } from '@/components/ui';
 
 export function CampaignEmpty({
   message = "You haven't created any campaigns yet.",
-  buttonText = "Create Your First Campaign",
-  buttonHref = "/",
+  buttonText = 'Create Your First Campaign',
+  buttonHref = '/',
   onCreate,
 }: {
   message?: string;

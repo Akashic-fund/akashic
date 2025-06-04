@@ -14,13 +14,13 @@ interface CampaignCardDashboardProps {
 }
 const getCampaignStatus = (campaign: Campaign) => {
   const now = Math.floor(Date.now() / 1000);
-  if (campaign.status === 'draft') {
+  if (campaign.status === 'DRAFT') {
     return 'Draft';
-  } else if (campaign.status === 'pending_approval') {
+  } else if (campaign.status === 'PENDING_APPROVAL') {
     return 'Pending Approval';
-  } else if (campaign.status === 'failed') {
+  } else if (campaign.status === 'FAILED') {
     return 'Failed';
-  } else if (campaign.status === 'completed') {
+  } else if (campaign.status === 'COMPLETED') {
     return 'Completed';
   }
   const launchTime = campaign.launchTime ? parseInt(campaign.launchTime) : now;
@@ -135,7 +135,7 @@ export function CampaignCardAdmin({
             </p>
           )}
 
-          {campaign.status === 'pending_approval' && (
+          {campaign.status === 'PENDING_APPROVAL' && (
             <Button
               onClick={onApproveIntern}
               className="mt-4 w-full bg-green-600 hover:bg-green-700"
@@ -145,28 +145,30 @@ export function CampaignCardAdmin({
             </Button>
           )}
 
-          {campaign.totalRaised && campaign.goalAmount && (
-            <div className="mt-4">
-              <div className="mb-2 flex justify-between text-sm">
-                <span>Progress</span>
-                <span>
-                  {(
+          {typeof campaign.totalRaised === 'string' &&
+            typeof campaign.goalAmount === 'string' && (
+              <div className="mt-4">
+                <div className="mb-2 flex justify-between text-sm">
+                  <span>Progress</span>
+                  <span>
+                    {(
+                      (Number(campaign.totalRaised) /
+                        Number(campaign.goalAmount)) *
+                      100
+                    ).toFixed(2)}
+                    %
+                  </span>
+                </div>
+                <Progress
+                  value={
                     (Number(campaign.totalRaised) /
                       Number(campaign.goalAmount)) *
                     100
-                  ).toFixed(2)}
-                  %
-                </span>
+                  }
+                  className="h-2"
+                />
               </div>
-              <Progress
-                value={
-                  (Number(campaign.totalRaised) / Number(campaign.goalAmount)) *
-                  100
-                }
-                className="h-2"
-              />
-            </div>
-          )}
+            )}
 
           {/* Display associated rounds */}
           {campaign.rounds && campaign.rounds.length > 0 && (

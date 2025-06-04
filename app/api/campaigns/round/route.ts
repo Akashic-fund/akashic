@@ -1,37 +1,35 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/prisma';
-
-export async function POST(req: NextRequest) {
+import { db } from '@/server/db';
+import { checkAuth } from '@/lib/api/auth';
+import { ApiParameterError } from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
+import { PostCampaignsRouteBody } from '@/lib/api/types';
+export async function POST(req: Request) {
   try {
-    const { campaignId, roundIds } = await req.json();
+    await checkAuth(['admin']);
 
-    if (!campaignId || !roundIds || !Array.isArray(roundIds)) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Campaign ID and round IDs are required' }),
-        { status: 400 },
-      );
+    const { campaignId, roundIds }: PostCampaignsRouteBody = await req.json();
+    if (!campaignId) {
+      throw new ApiParameterError('campaignId is required');
+    }
+    if (!roundIds || !Array.isArray(roundIds)) {
+      throw new ApiParameterError('roundIds is required');
     }
 
     // Create entries in the RoundCampaigns table
     const roundCampaigns = await Promise.all(
       roundIds.map((roundId) =>
-        prisma.roundCampaigns.create({
+        db.roundCampaigns.create({
           data: {
-            roundId,
-            campaignId,
             Campaign: { connect: { id: campaignId } },
             Round: { connect: { id: roundId } },
           },
         }),
       ),
     );
-
-    return new NextResponse(JSON.stringify(roundCampaigns), { status: 201 });
-  } catch (error) {
-    console.error('Failed to add campaign to rounds:', error);
-    return new NextResponse(
-      JSON.stringify({ error: 'Failed to add campaign to rounds' }),
-      { status: 500 },
-    );
+    return response({
+      roundCampaigns,
+    });
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

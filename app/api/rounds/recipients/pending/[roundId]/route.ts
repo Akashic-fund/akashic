@@ -1,23 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-// import { ApplicationStatus } from "@/lib/qfInteractions"
+import { db } from '@/server/db';
+import { ApiParameterError } from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
+import { RoundsWithRoundIdParams } from '@/lib/api/types';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ roundId: string }> },
-) {
+export async function GET(req: Request, { params }: RoundsWithRoundIdParams) {
   try {
-    const resolvedParams = await params; // Await the Promise
+    // public endpoint
+    const resolvedParams = await params;
     const roundId = parseInt(resolvedParams.roundId, 10);
 
     if (isNaN(roundId)) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid round ID' },
-        { status: 400 },
-      );
+      throw new ApiParameterError('Invalid round id parameters');
     }
 
-    const recipients = await prisma.roundCampaigns.findMany({
+    const recipients = await db.roundCampaigns.findMany({
       where: {
         roundId,
       },
@@ -30,13 +26,9 @@ export async function GET(
         },
       },
     });
-
-    return NextResponse.json({ success: true, recipients });
-  } catch (error) {
-    console.error('Failed to fetch pending recipients:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch pending recipients' },
-      { status: 500 },
-    );
+    // TODO: recipents.length === 0 because of invalid round-id?
+    return response({ success: true, recipients });
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

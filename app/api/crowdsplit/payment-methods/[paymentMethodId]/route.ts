@@ -1,49 +1,38 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/server/db';
+import { checkAuth } from '@/lib/api/auth';
+import { ApiAuthNotAllowed, ApiNotFoundError } from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
 import { crowdsplitService } from '@/lib/crowdsplit/service';
+import { CrowdsplitPaymentMethodGetParams } from '@/lib/crowdsplit/api/types';
+
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ paymentMethodId: string }> },
+  req: Request,
+  { params }: CrowdsplitPaymentMethodGetParams,
 ) {
-  const paymentMethodId = parseInt((await params).paymentMethodId);
-  const searchParams = request.nextUrl.searchParams;
-  const userAddress = searchParams.get('userAddress');
-  if (!userAddress) {
-    return NextResponse.json(
-      { error: 'User address is required' },
-      { status: 400 },
-    );
-  }
   try {
-    const user = await prisma.user.findUnique({
-      where: { address: userAddress },
+    const session = await checkAuth(['user']);
+    const paymentMethodId = parseInt((await params).paymentMethodId);
+    const user = await db.user.findUnique({
+      where: { address: session.user.address },
     });
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      throw new ApiNotFoundError('User not found');
     }
-    const paymentMethod = await prisma.paymentMethod.findUnique({
+
+    const paymentMethod = await db.paymentMethod.findUnique({
       where: { id: paymentMethodId },
     });
     if (!paymentMethod) {
-      return NextResponse.json(
-        { error: 'Payment Method not found' },
-        { status: 404 },
-      );
+      throw new ApiNotFoundError('Payment Method not found');
     }
     if (paymentMethod.userId !== user.id) {
-      return NextResponse.json(
-        { error: 'Payment Method not accessible by user' },
-        { status: 404 },
-      );
+      throw new ApiAuthNotAllowed('Payment Method not accessible by user');
     }
     if (!paymentMethod.externalId) {
-      return NextResponse.json({ paymentMethod }, { status: 200 });
+      return response({ paymentMethod });
     }
     if (!user.crowdsplitCustomerId) {
-      return NextResponse.json(
-        { error: 'User profile incomplete' },
-        { status: 404 },
-      );
+      throw new ApiNotFoundError('User Profile not found');
     }
     const crowdsplitPaymentMethod = await crowdsplitService.getPaymentMethod({
       id: paymentMethod.externalId,
@@ -51,91 +40,55 @@ export async function GET(
     });
     const details = crowdsplitPaymentMethod?.bankDetails ?? null;
 
-    return NextResponse.json(
-      {
-        paymentMethod: {
-          ...paymentMethod,
-          details,
-        },
+    return response({
+      paymentMethod: {
+        ...paymentMethod,
+        details,
       },
-      { status: 200 },
-    );
-  } catch (error) {
-    console.error(
-      'Failed to fetch rounds for campaign:',
-      (error as unknown as Error).stack,
-    );
-    return NextResponse.json(
-      { error: 'Failed to fetch rounds' },
-      { status: 500 },
-    );
+    });
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }
+
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ paymentMethodId: string }> },
+  req: Request,
+  { params }: CrowdsplitPaymentMethodGetParams,
 ) {
-  const paymentMethodId = parseInt((await params).paymentMethodId);
-  const searchParams = request.nextUrl.searchParams;
-  const userAddress = searchParams.get('userAddress');
-  if (!userAddress) {
-    return NextResponse.json(
-      { error: 'User address is required' },
-      { status: 400 },
-    );
-  }
   try {
-    const user = await prisma.user.findUnique({
-      where: { address: userAddress },
+    const session = await checkAuth(['user']);
+    const paymentMethodId = parseInt((await params).paymentMethodId);
+    const user = await db.user.findUnique({
+      where: { address: session.user.address },
     });
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      throw new ApiNotFoundError('User not found');
     }
-    const paymentMethod = await prisma.paymentMethod.findUnique({
+
+    const paymentMethod = await db.paymentMethod.findUnique({
       where: { id: paymentMethodId },
     });
     if (!paymentMethod) {
-      return NextResponse.json(
-        { error: 'Payment Method not found' },
-        { status: 404 },
-      );
+      throw new ApiNotFoundError('Payment Method not found');
     }
     if (paymentMethod.userId !== user.id) {
-      return NextResponse.json(
-        { error: 'Payment Method not accessible by user' },
-        { status: 404 },
-      );
+      throw new ApiAuthNotAllowed('Payment Method not accessible by user');
     }
     if (!paymentMethod.externalId) {
-      await prisma.paymentMethod.delete({ where: { id: paymentMethodId } });
-      return NextResponse.json({ success: true }, { status: 200 });
+      await db.paymentMethod.delete({ where: { id: paymentMethodId } });
+      return response({ success: true });
     }
     if (!user.crowdsplitCustomerId) {
-      return NextResponse.json(
-        { error: 'User profile incomplete' },
-        { status: 404 },
-      );
+      throw new ApiNotFoundError('User Profile not found');
     }
     await crowdsplitService.deletePaymentMethod(
       paymentMethod.externalId,
       user.crowdsplitCustomerId,
     );
-    await prisma.paymentMethod.delete({ where: { id: paymentMethodId } });
+    await db.paymentMethod.delete({ where: { id: paymentMethodId } });
 
-    return NextResponse.json(
-      {
-        success: true,
-      },
-      { status: 200 },
-    );
-  } catch (error) {
-    console.error(
-      'Failed to remove payment method:',
-      (error as unknown as Error).stack,
-    );
-    return NextResponse.json(
-      { error: 'Failed to remove payment method' },
-      { status: 500 },
-    );
+    return response({ success: true });
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

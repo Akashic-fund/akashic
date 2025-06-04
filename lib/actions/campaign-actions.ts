@@ -1,6 +1,6 @@
 'use server';
 
-import { prisma } from '@/lib/prisma';
+import { db } from '@/server/db';
 import { revalidatePath } from 'next/cache';
 import type { ActionResponse } from '@/types/actions';
 
@@ -15,7 +15,7 @@ export async function applyCampaignToRound({
 }: ApplyCampaignToRoundParams): Promise<ActionResponse<void>> {
   try {
     // Check if the round exists
-    const round = await prisma.round.findUnique({
+    const round = await db.round.findUnique({
       where: { id: roundId },
     });
 
@@ -27,7 +27,7 @@ export async function applyCampaignToRound({
     }
 
     // Check if the campaign exists
-    const campaign = await prisma.campaign.findUnique({
+    const campaign = await db.campaign.findUnique({
       where: { id: campaignId },
     });
 
@@ -48,7 +48,7 @@ export async function applyCampaignToRound({
     }
 
     // Check if the campaign is already applied to this round
-    const existingApplication = await prisma.roundCampaigns.findFirst({
+    const existingApplication = await db.roundCampaigns.findFirst({
       where: {
         roundId,
         campaignId,
@@ -63,7 +63,7 @@ export async function applyCampaignToRound({
     }
 
     // Create the application
-    await prisma.roundCampaigns.create({
+    await db.roundCampaigns.create({
       data: {
         roundId,
         campaignId,

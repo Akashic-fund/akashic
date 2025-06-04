@@ -21,16 +21,14 @@ import { type Campaign } from '@/types/campaign';
 import { DashboardOverview } from '@/components/dashboard/overview';
 
 export default function AdminPage() {
-  const { address, isAdmin, isReady } = useAuth();
+  const { isAdmin, isReady } = useAuth();
   const { toast } = useToast();
 
   const [error, setError] = useState<string | null>(null);
   const { adminApproveCampaign: adminApproveWeb3Campaign } =
     useAdminApproveWeb3Campaign();
 
-  const { mutateAsync: adminApproveCampaign } = useAdminApproveCampaign({
-    adminAddress: address,
-  });
+  const { mutateAsync: adminApproveCampaign } = useAdminApproveCampaign();
   /* TODO: Implement rounds functionality
    * - Add state management for rounds
    * - Add state for selected rounds

@@ -12,7 +12,8 @@ export default async function Page({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const campaign: Campaign = await getCampaign((await params).slug);
+  const { slug } = await params;
+  const campaign: Campaign = await getCampaign(slug);
   return (
     <>
       <PageHeaderSticky message="Donating to" title={campaign.title} />
@@ -20,7 +21,7 @@ export default async function Page({
         <Suspense fallback={<PaymentStatusLoading />}>
           <PaymentStatus />
         </Suspense>
-        <ProjectInfo campaign={campaign} />
+        <ProjectInfo slug={slug} />
       </PageMainTwoColums>
     </>
   );

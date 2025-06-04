@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react';
-import { useAccount } from '@/contexts';
+import { useAuth } from '@/contexts';
 
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { Log, parseEther, keccak256, stringToHex } from 'viem';
@@ -17,7 +17,7 @@ export function useCreateCampaignContract({
 }: {
   onConfirmed: (arg0: IOnCreateCampaignConfirmed) => void;
 }) {
-  const { address } = useAccount();
+  const { address, authenticated } = useAuth();
   const { data: hash, isPending, writeContract } = useWriteContract();
   const {
     isLoading: isConfirming,
@@ -36,6 +36,9 @@ export function useCreateCampaignContract({
       endTime: string;
       fundingGoal: string;
     }) => {
+      if (!authenticated) {
+        throw new Error('wallet not connected');
+      }
       const campaignData = {
         launchTime: BigInt(new Date(startTime ?? '').getTime() / 1000),
         deadline: BigInt(new Date(endTime ?? '').getTime() / 1000),
@@ -58,7 +61,7 @@ export function useCreateCampaignContract({
         ],
       });
     },
-    [address, writeContract],
+    [address, authenticated, writeContract],
   );
 
   useEffect(() => {

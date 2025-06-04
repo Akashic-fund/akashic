@@ -1,32 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/server/db';
+import { checkAuth } from '@/lib/api/auth';
+import { ApiNotFoundError } from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
 import { crowdsplitService } from '@/lib/crowdsplit/service';
 
-export async function POST(request: NextRequest) {
-  const data = await request.json();
-  const { userAddress, walletAddress } = data;
-  if (!userAddress) {
-    return NextResponse.json(
-      { error: 'User address is required' },
-      { status: 400 },
-    );
-  }
+export async function POST(req: Request) {
   try {
-    const user = await prisma.user.findUnique({
-      where: { address: userAddress },
+    const data = await req.json();
+    const session = await checkAuth(['user']);
+
+    const { walletAddress } = data;
+    const user = await db.user.findUnique({
+      where: { address: session.user.address },
     });
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      throw new ApiNotFoundError('User not found');
     }
     if (!user.crowdsplitCustomerId) {
-      return NextResponse.json(
-        {
-          error: 'User profile not found',
-        },
-        { status: 404, headers: { 'Content-Type': 'application/json' } },
-      );
+      throw new ApiNotFoundError('User Profile not found');
     }
-
     // Call the Crowdsplit API to associate the wallet address with the customer
     if (walletAddress) {
       await crowdsplitService.associatWallet({
@@ -37,23 +29,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Update the user with the recipient wallet address
-    await prisma.user.update({
-      where: { address: userAddress },
+    await db.user.update({
+      where: { address: session.user.address },
       data: { recipientWallet: walletAddress },
     });
 
-    return NextResponse.json({
+    return response({
       success: true,
       message: 'Wallet address added successfully',
     });
-  } catch (error) {
-    console.error('Wallet address addition error:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to add wallet address',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 },
-    );
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

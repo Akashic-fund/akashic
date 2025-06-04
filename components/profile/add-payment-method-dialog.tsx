@@ -25,7 +25,6 @@ import { useCrowdsplitCreatePaymentMethod } from '@/lib/crowdsplit/hooks/useCrow
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts';
 import { useCallback, useState, useEffect } from 'react';
 import { z } from 'zod';
 import { enableFormDefault } from '@/lib/develop';
@@ -71,11 +70,10 @@ export function ProfileAddPaymentMethodDialog({
 }) {
   const [openIntern, setOpenIntern] = useState(open);
   const { toast } = useToast();
-  const { address } = useAuth();
   const {
     mutateAsync: createPaymentMethod,
     isPending: isPendingCreatePaymentMethod,
-  } = useCrowdsplitCreatePaymentMethod({ userAddress: address ?? '' });
+  } = useCrowdsplitCreatePaymentMethod();
   const form = useForm<BankAccountFormValues>({
     resolver: zodResolver(bankAccountSchema),
     defaultValues,
@@ -102,15 +100,6 @@ export function ProfileAddPaymentMethodDialog({
 
   const onSubmit = useCallback(
     async (data: BankAccountFormValues) => {
-      if (!address) {
-        toast({
-          title: 'Error',
-          description: 'Please connect your wallet first',
-          variant: 'destructive',
-        });
-        return;
-      }
-
       try {
         console.log('Submitting payment method:', {
           type: data.type,
@@ -142,7 +131,7 @@ export function ProfileAddPaymentMethodDialog({
         });
       }
     },
-    [onSuccess, createPaymentMethod, toast, onOpenChange, address],
+    [onSuccess, createPaymentMethod, toast, onOpenChange],
   );
   useEffect(() => {
     if (typeof open === 'boolean') {

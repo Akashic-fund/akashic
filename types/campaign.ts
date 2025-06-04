@@ -30,7 +30,9 @@ export interface DbCampaign {
     campaignId: number;
     creatorAddress: string;
   }[];
+  RoundCampaigns?: { Round: { id: number; title: string } }[];
   rounds?: { id: number; title: string }[];
+  payments?: Payment[];
 }
 
 export type CampaignDisplay = {
@@ -84,21 +86,25 @@ export type CampaignImage = {
 export type Payment = {
   id: number;
   amount: string; // Stored as string to preserve precision
-  token: string; // e.g., "USDC"
-  status: 'pending' | 'confirmed' | 'failed'; // Assuming possible statuses
-  transactionHash?: string;
-  isAnonymous: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  campaignId: number;
+  token?: string; // e.g., "USDC"
+  type?: 'BUY' | 'SELL';
+  status?: string; // 'pending' | 'confirmed' | 'failed'; // Assuming possible statuses
+  transactionHash?: string | null;
+  isAnonymous?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+  campaignId?: number;
   campaign?: Campaign;
-  userId: number;
-  user: User; // Assuming you have a corresponding type for User
+  userId?: number;
+  user?: User; // Assuming you have a corresponding type for User
 };
 
 type User = {
   id: number;
   address: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
   payments?: Payment[];
   createdAt: Date;
   updatedAt: Date;

@@ -6,8 +6,6 @@ export interface CrowdsplitCustomerPostResponse {
   customerId: string;
 }
 export interface CrowdsplitCustomerPostRequest {
-  userAddress: string;
-
   firstName: string;
   lastName: string;
   email: string;
@@ -25,9 +23,7 @@ export interface CrowdsplitCustomerPostRequest {
   phoneAreaCode: string;
   phoneNumber: string;
 }
-export interface CrowdsplitCustomerGetRequest {
-  userAddress: string;
-}
+export interface CrowdsplitCustomerGetRequest {}
 export interface CrowdsplitCustomerGetResponse {
   hasCustomer: boolean;
   customerId?: string;
@@ -43,25 +39,19 @@ export interface CrowdsplitDonationCustomerPostRequest {
   email: string;
 }
 // /api/crowdsplit/kyc/complete
-export interface CrowdsplitKycCompletePostRequest {
-  userAddress: string;
-}
+export interface CrowdsplitKycCompletePostRequest {}
 export interface CrowdsplitKycCompletePostResponse {
   success: boolean;
   message: string;
 }
 // /api/crowdsplit/kyc/initiate
-export interface CrowdsplitKycInitiatePostRequest {
-  userAddress: string;
-}
+export interface CrowdsplitKycInitiatePostRequest {}
 export interface CrowdsplitKycInitiatePostResponse {
   success: boolean;
   redirectUrl: string;
 }
 // /api/crowdsplit/kyc/status
-export interface CrowdsplitKycStatusGetRequest {
-  userAddress: string;
-}
+export interface CrowdsplitKycStatusGetRequest {}
 export interface CrowdsplitKycStatusGetResponse {
   status: 'pending' | 'completed' | 'failed';
   customerId: string;
@@ -70,7 +60,9 @@ export interface CrowdsplitKycStatusGetResponse {
 // /api/crowdsplit/payment-methods/[paymentMethodId]
 export interface CrowdsplitPaymentMethodGetRequest {
   paymentMethodId: string; // path
-  userAddress: string;
+}
+export interface CrowdsplitPaymentMethodGetParams {
+  params: Promise<{ paymentMethodId: string }>;
 }
 // duplicate of types/payment/PaymentMethodBankDetails
 export interface CrowdsplitPaymentMethodDetails {
@@ -93,15 +85,12 @@ export interface CrowdsplitPaymentMethodGetResponse {
   details?: CrowdsplitPaymentMethodDetails;
 }
 // /api/crowdsplit/payment-methods
-export interface CrowdsplitPaymentMethodsGetRequest {
-  userAddress: string;
-}
+export interface CrowdsplitPaymentMethodsGetRequest {}
 export interface CrowdsplitPaymentMethodsGetResponse {
   paymentMethods: CrowdsplitPaymentMethodGetResponse[];
 }
 
 export interface CrowdsplitPaymentMethodsPostRequest {
-  userAddress: string;
   type: string;
   provider: string;
   bankDetails: CrowdsplitPaymentMethodDetails;
@@ -111,13 +100,15 @@ export interface CrowdsplitPaymentMethodsPostResponse {
   paymentMethod: CrowdsplitPaymentMethodGetResponse;
 }
 export interface CrowdsplitPaymentMethodDeleteRequest {
-  userAddress: string;
   paymentMethodId: number;
 }
 export interface CrowdsplitPaymentMethodDeleteResponse {
   success: boolean;
 }
 // /api/crowdsplit/payments/[id]/confirm
+export interface CrowdsplitPaymentsWithIdParams {
+  params: Promise<{ id: string }>;
+}
 export interface CrowdsplitConfirmPaymentPostRequest {}
 export interface CrowdsplitConfirmPaymentPostResponse {
   success: boolean;
@@ -139,7 +130,6 @@ export interface CrowdsplitCreatePaymentPostResponse {
 
 // /api/crowdsplit/transactions
 export interface CrowdsplitTransactionsPostRequest {
-  userAddress: string;
   campaignId: number;
   type: 'SELL' | 'BUY';
   customerId: string;
@@ -149,7 +139,6 @@ export interface CrowdsplitTransactionsPostRequest {
 }
 // /api/crowdsplit/wallet-addresses
 export interface CrowdsplitWalletAddressesPostRequest {
-  userAddress: string;
   walletAddress?: string;
 }
 export interface CrowdsplitWalletAddressesPostResponse {

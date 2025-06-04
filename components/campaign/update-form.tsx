@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { useAccount } from '@/contexts';
+import { useAuth } from '@/contexts';
 
 interface CampaignUpdateFormProps {
   creatorAddress: string;
-  onSubmit: (formData: FormData, userAddress: string) => Promise<void>;
+  onSubmit: (formData: FormData) => Promise<void>;
 }
 
 export function CampaignUpdateForm({
@@ -19,7 +19,7 @@ export function CampaignUpdateForm({
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
-  const { address: userAddress } = useAccount();
+  const { address: userAddress } = useAuth();
 
   const isOwner = userAddress?.toLowerCase() === creatorAddress?.toLowerCase();
 
@@ -41,7 +41,7 @@ export function CampaignUpdateForm({
 
     startTransition(async () => {
       try {
-        await onSubmit(new FormData(e.currentTarget), userAddress);
+        await onSubmit(new FormData(e.currentTarget));
         formRef.current?.reset();
         toast({
           title: 'Success!',

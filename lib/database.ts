@@ -1,5 +1,5 @@
 import { Campaign as CampaignType, CampaignDisplay } from '@/types/campaign';
-import { prisma } from './prisma';
+import { db } from '@/server/db';
 import { notFound } from 'next/navigation';
 import { CampaignStatus } from '@/types/campaign';
 
@@ -76,7 +76,7 @@ export async function getCampaignUpdates(
   campaignId: number,
 ): Promise<CampaignUpdate[]> {
   try {
-    const updates = await prisma.campaignUpdate.findMany({
+    const updates = await db.campaignUpdate.findMany({
       where: {
         campaignId,
       },
@@ -96,15 +96,10 @@ export async function getCampaign(
 ): Promise<CampaignType & CampaignDisplay> {
   console.log('getCampaign', slug);
   // Get the campaign with all relations
-  const dbCampaign = (await prisma.campaign.findUnique({
+  const dbCampaign = (await db.campaign.findUnique({
     where: { slug },
     include: {
       images: true,
-      payments: {
-        include: {
-          user: true,
-        },
-      },
       comments: true,
       updates: true,
     },
@@ -114,18 +109,10 @@ export async function getCampaign(
     notFound();
   }
 
-  // Convert the payment data to match the expected types
-  const payments = dbCampaign.payments.map((payment) => ({
-    ...payment,
-    status: payment.status as 'pending' | 'confirmed' | 'failed',
-    transactionHash: payment.transactionHash || undefined,
-  }));
-
   // Convert the data to match the expected types
   const result: CampaignType & CampaignDisplay = {
     ...dbCampaign,
     images: dbCampaign.images || [],
-    payments: payments,
     comments: dbCampaign.comments || [],
     updates: dbCampaign.updates || [],
     address: dbCampaign.campaignAddress || '',
@@ -141,6 +128,5 @@ export async function getCampaign(
     amountRaised: '0',
     location: dbCampaign.location,
   };
-
   return result;
 }

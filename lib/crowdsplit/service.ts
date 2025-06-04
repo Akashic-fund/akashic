@@ -170,11 +170,12 @@ export class CrowdsplitService {
       phone_area_code: customerData.phoneAreaCode,
       phone_number: customerData.phoneNumber,
     } as CrowdsplitCreateCustomerRequest;
-    return this.request<CrowdsplitCreateCustomerResponse>(
+    const response = await this.request<CrowdsplitCreateCustomerResponse>(
       '/api/v1/customers',
       'POST',
       payload,
     );
+    return response.data;
   }
 
   async createDonationCustomer(
@@ -183,11 +184,13 @@ export class CrowdsplitService {
     const payload = {
       email: customerData.email,
     } as CrowdsplitCreateDonationCustomerRequest;
-    return this.request<CrowdsplitCreateDonationCustomerResponse>(
-      '/api/v1/customers',
-      'POST',
-      payload,
-    );
+    const response =
+      await this.request<CrowdsplitCreateDonationCustomerResponse>(
+        '/api/v1/customers',
+        'POST',
+        payload,
+      );
+    return response.data;
   }
 
   async initiateKyc(customerId: string) {

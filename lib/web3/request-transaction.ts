@@ -1,7 +1,7 @@
 import { BigNumber, ethers } from 'ethers';
 import { erc20Abi } from 'viem';
 import { USDC_ADDRESS } from '@/lib/constant';
-import { ConnectedWallet } from '@privy-io/react-auth';
+import { type ConnectedWallet } from '@/lib/web3/types';
 
 const debug = process.env.NODE_ENV !== 'production';
 
@@ -14,13 +14,13 @@ export async function requestTransaction({
   address: string;
   amount: string;
 }) {
-  const privyProvider = await wallet.getEthereumProvider();
-  const walletProvider = new ethers.providers.Web3Provider(privyProvider);
-  const signer = walletProvider.getSigner();
-  const userAddress = await signer.getAddress();
-  if (!wallet || !wallet.isConnected()) {
+  if (!wallet || !(await wallet.isConnected())) {
     throw new Error('Wallet not connected');
   }
+  const walletProvider = await wallet.getEthereumProvider();
+  const ethersProvider = new ethers.providers.Web3Provider(walletProvider);
+  const signer = ethersProvider.getSigner();
+  const userAddress = await signer.getAddress();
   if (!USDC_ADDRESS || !ethers.utils.isAddress(USDC_ADDRESS as string)) {
     throw new Error('USDC_ADDRESS is missing or invalid');
   }

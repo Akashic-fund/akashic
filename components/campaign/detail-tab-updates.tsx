@@ -15,8 +15,8 @@ export function CampaignDetailTabUpdates({
         <div className="mx-auto max-w-3xl">
           <CampaignUpdateForm
             creatorAddress={campaign.creatorAddress}
-            onSubmit={async (formData, userAddress) =>
-              campaignUpdateFormAction(campaign, formData, userAddress)
+            onSubmit={async (formData) =>
+              campaignUpdateFormAction(campaign, formData)
             }
           />
         </div>

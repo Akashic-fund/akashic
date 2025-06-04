@@ -1,4 +1,4 @@
-import { useWallet } from './use-wallet';
+import { useWallet } from './use-web3';
 import { useState, useEffect } from 'react';
 import { erc20Abi } from 'viem';
 import { USDC_ADDRESS } from '@/lib/constant';
@@ -11,9 +11,11 @@ export function useUsdcBalance() {
     const fetchUsdcBalance = async () => {
       console.log('fetchUSDCBalance');
       if (wallet && (await wallet.isConnected())) {
-        const privyProvider = await wallet.getEthereumProvider();
-        const walletProvider = new ethers.providers.Web3Provider(privyProvider);
-        const signer = walletProvider.getSigner();
+        const walletProvider = await wallet.getEthereumProvider();
+        const ethersProvider = new ethers.providers.Web3Provider(
+          walletProvider,
+        );
+        const signer = ethersProvider.getSigner();
         const userAddress = await signer.getAddress();
         console.log('fetchUSDCBalance', { userAddress });
 
@@ -40,6 +42,6 @@ export function useUsdcBalance() {
     };
 
     fetchUsdcBalance();
-  }, [wallet]); // Run effect when wallet changes
+  }, [wallet]);
   return usdcBalance;
 }

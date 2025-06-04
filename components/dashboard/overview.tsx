@@ -23,7 +23,7 @@ const calculateStats = (campaigns: Campaign[]) => {
         : now;
       const deadline = campaign.deadline ? parseInt(campaign.deadline) : now;
       return (
-        now >= launchTime && now <= deadline && campaign.status === 'active'
+        now >= launchTime && now <= deadline && campaign.status === 'ACTIVE'
       );
     }).length,
     averageProgress:

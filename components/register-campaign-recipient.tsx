@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAccount } from '@/contexts';
+import { useAuth } from '@/contexts';
 import { useConnectorClient } from 'wagmi';
 import { type Address, type Chain, type Client, type Transport } from 'viem';
 import { ethers, providers, Signer } from 'ethers';
@@ -73,7 +73,7 @@ export function RegisterCampaignRecipient({
   const [isRegistering, setIsRegistering] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { address: accountAddress, isConnected } = useAccount();
+  const { authenticated } = useAuth();
   const { data: client } = useConnectorClient();
 
   // Memoize the signer
@@ -150,7 +150,7 @@ export function RegisterCampaignRecipient({
   // }
 
   async function handleRegisterRecipient() {
-    if (!isConnected || !accountAddress) {
+    if (!authenticated) {
       toast({
         title: 'Wallet not connected',
         description: 'Please connect your wallet to register.',
@@ -194,7 +194,6 @@ export function RegisterCampaignRecipient({
             campaignId,
             roundId,
             recipientAddress: campaignWalletAddress,
-            walletAddress: accountAddress, // Submitter's address
             // No txHash or onchainRecipientId yet
           }),
         },
@@ -342,7 +341,6 @@ export function RegisterCampaignRecipient({
       //             campaignId,
       //             roundId,
       //             recipientAddress: campaignWalletAddress, // Include for lookup
-      //             walletAddress: accountAddress, // Include for consistency or potential checks
       //             txHash: txHash,
       //             onchainRecipientId: onchainRecipientId,
       //         }),

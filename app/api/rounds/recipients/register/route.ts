@@ -1,8 +1,15 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/server/db';
+import { checkAuth } from '@/lib/api/auth';
+import {
+  ApiAuthNotAllowed,
+  ApiConflictError,
+  ApiNotFoundError,
+  ApiParameterError,
+} from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
+
 import { z } from 'zod';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { RecipientStatus } from '@/.generated/prisma/client';
+import { RecipientStatus } from '@/server/db';
 // import { ApplicationStatus } from "@/lib/qfInteractions"
 
 // Define Zod schema for input validation
@@ -12,9 +19,6 @@ const registerSchema = z.object({
   recipientAddress: z
     .string()
     .regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid Ethereum address'),
-  walletAddress: z
-    .string()
-    .regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid Ethereum address'), // Submitter's wallet
   // Optional fields for update
   txHash: z
     .string()
@@ -25,23 +29,14 @@ const registerSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    // Optional: Get current user session if needed for authorization
-    // const user = await getCurrentUser()
-    // if (!user) {
-    //     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
-    // }
+    const session = await checkAuth(['user']);
 
     const body = await req.json();
     const validation = registerSchema.safeParse(body);
-
     if (!validation.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid input',
-          details: validation.error.errors,
-        },
-        { status: 400 },
+      throw new ApiParameterError(
+        'Missing required parameters',
+        validation.error.errors,
       );
     }
 
@@ -49,16 +44,14 @@ export async function POST(req: Request) {
       campaignId,
       roundId,
       recipientAddress,
-      walletAddress, // Address of the user submitting the request
       txHash,
       onchainRecipientId,
     } = validation.data;
-
+    const walletAddress = session.user.address;
     // Optional: Verify ownership or authorization if needed
-    // e.g., check if walletAddress matches the logged-in user or campaign owner
 
     // Use the correct model: RoundCampaigns
-    const existingRegistration = await prisma.roundCampaigns.findUnique({
+    const existingRegistration = await db.roundCampaigns.findUnique({
       where: {
         // Use the unique constraint defined in the schema
         roundId_campaignId: {
@@ -76,28 +69,24 @@ export async function POST(req: Request) {
         console.error(
           `Attempted to update non-existent RoundCampaigns record for Round ${roundId}, Campaign ${campaignId}`,
         );
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Pending registration record not found for update.',
-          },
-          { status: 404 },
+        throw new ApiNotFoundError(
+          'Pending registration record not found for update.',
         );
       }
-
+      if (
+        existingRegistration.submittedByWalletAddress !== session.user.address
+      ) {
+        throw new ApiAuthNotAllowed('Registration not created by session user');
+      }
       // Ensure we are updating a PENDING record
       if (existingRegistration.status !== RecipientStatus.PENDING) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Cannot update registration with status: ${existingRegistration.status}`,
-          },
-          { status: 409 }, // Conflict - already approved/rejected etc.
+        throw new ApiConflictError(
+          `Cannot update registration with status: ${existingRegistration.status}`,
         );
       }
 
       // Update the existing record to APPROVED
-      const updatedRegistration = await prisma.roundCampaigns.update({
+      const updatedRegistration = await db.roundCampaigns.update({
         where: {
           // Use the unique constraint again for safety, or the ID if preferred
           roundId_campaignId: {
@@ -119,10 +108,7 @@ export async function POST(req: Request) {
       console.log(
         `Updated RoundCampaigns ${updatedRegistration.id} to APPROVED for Round ${roundId}, Campaign ${campaignId}`,
       );
-      return NextResponse.json(
-        { success: true, data: updatedRegistration },
-        { status: 200 },
-      );
+      return response({ success: true, data: updatedRegistration });
     }
 
     // --- Handle Initial Registration Request (txHash and onchainRecipientId are NOT present) ---
@@ -135,18 +121,11 @@ export async function POST(req: Request) {
         } else if (existingRegistration.status === RecipientStatus.APPROVED) {
           message = 'Campaign is already approved for this round.';
         }
-        return NextResponse.json(
-          {
-            success: false,
-            message: message,
-            status: existingRegistration.status,
-          },
-          { status: 409 }, // Conflict
-        );
+        throw new ApiConflictError(message);
       }
 
       // Create a new registration record with PENDING status
-      const newRegistration = await prisma.roundCampaigns.create({
+      const newRegistration = await db.roundCampaigns.create({
         data: {
           roundId: roundId,
           campaignId: campaignId,
@@ -160,31 +139,9 @@ export async function POST(req: Request) {
       console.log(
         `Created new PENDING RoundCampaigns for Round ${roundId}, Campaign ${campaignId}`,
       );
-      return NextResponse.json(
-        { success: true, data: newRegistration },
-        { status: 201 },
-      ); // 201 Created
+      return response({ success: true, data: newRegistration });
     }
   } catch (error: unknown) {
-    console.error('Error in /api/rounds/recipients/register:', error);
-    let errorMessage = 'An internal server error occurred.';
-    let statusCode = 500;
-
-    // Check specifically for Prisma unique constraint violation
-    if (
-      error instanceof PrismaClientKnownRequestError &&
-      error.code === 'P2002'
-    ) {
-      errorMessage =
-        'A registration record for this campaign and round already exists.';
-      statusCode = 409; // Conflict
-    } else if (error instanceof Error) {
-      errorMessage = error.message;
-    }
-
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: statusCode },
-    );
+    return handleError(error);
   }
 }

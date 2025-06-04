@@ -1,36 +1,83 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/prisma';
-
-export async function PATCH(req: NextRequest) {
+import { ApiNotFoundError } from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
+import { CampaignsWithIdParams } from '@/lib/api/types';
+import { db, Payment, User } from '@/server/db';
+interface PaymentWithUserType extends Payment {
+  user: User | null;
+}
+interface PaymentWithWhitelistedUserType extends Payment {
+  user: {
+    id: number;
+    address: string;
+    firstName: string;
+    lastName: string;
+  } | null;
+}
+export async function GET(req: Request, { params }: CampaignsWithIdParams) {
   try {
-    const campaignId = req.nextUrl.searchParams.get('campaignId');
-    const body = await req.json();
-    const { status, transactionHash, campaignAddress } = body;
-
-    if (!campaignId) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Campaign ID is required' }),
-        { status: 400 },
-      );
+    const { campaignId: campaignIdOrSlug } = await params;
+    let where = undefined;
+    if (!isNaN(Number(campaignIdOrSlug))) {
+      where = { id: Number(campaignIdOrSlug) };
+    } else {
+      where = { slug: campaignIdOrSlug };
     }
-
-    const campaign = await prisma.campaign.update({
-      where: {
-        id: parseInt(campaignId),
-      },
-      data: {
-        status,
-        transactionHash,
-        campaignAddress,
+    const instance = await db.campaign.findUnique({
+      where,
+      include: {
+        images: true,
+        payments: {
+          include: {
+            user: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+        comments: true,
+        updates: true,
       },
     });
+    if (!instance) {
+      throw new ApiNotFoundError('Campaign not found');
+    }
+    const campaign = {
+      ...instance,
+      payments:
+        instance.payments?.reduce(
+          (
+            accumulator: PaymentWithWhitelistedUserType[],
+            payment: PaymentWithUserType,
+          ) => {
+            if (isNaN(Number(payment.amount)) || !payment.user) {
+              return accumulator;
+            }
+            if (payment.isAnonymous) {
+              const anonymousUser = {
+                id: 0,
+                address: '0x00000000000000000000000000000000',
+                firstName: 'Arno',
+                lastName: 'Nym',
+              };
+              return accumulator.concat({ ...payment, user: anonymousUser });
+            }
+            const whitelistedUser = {
+              id: payment.user.id,
+              address: payment.user.address,
+              firstName: payment.user.firstName,
+              lastName: payment.user.lastName,
+            };
+            return accumulator.concat({
+              ...payment,
+              user: whitelistedUser,
+            } as PaymentWithWhitelistedUserType);
+          },
+          [],
+        ) ?? [],
+    };
 
-    return new NextResponse(JSON.stringify(campaign), { status: 200 });
-  } catch (error) {
-    console.error('Failed to update campaign:', error);
-    return new NextResponse(
-      JSON.stringify({ error: 'Failed to update campaign' }),
-      { status: 500 },
-    );
+    return response({ campaign });
+  } catch (error: unknown) {
+    handleError(error);
   }
 }

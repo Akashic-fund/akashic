@@ -1,14 +1,28 @@
+import { db } from '@/server/db';
+import { checkAuth, isAdmin } from '@/lib/api/auth';
+import {
+  ApiParameterError,
+  ApiUpstreamError,
+  ApiAuthNotAllowed,
+  ApiNotFoundError,
+} from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
+
 import { createPublicClient, http } from 'viem';
 import { celoAlfajores } from 'viem/chains';
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { DbCampaign } from '@/types/campaign';
-import { chainConfig } from '@/config/chain';
+import { chainConfig } from '@/lib/web3/config/chain';
 import { CampaignStatus } from '@/types/campaign';
 
 const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_CAMPAIGN_INFO_FACTORY;
 const RPC_URL = chainConfig.rpcUrl;
-
+const statusMap: Record<string, CampaignStatus> = {
+  draft: CampaignStatus.DRAFT,
+  pending_approval: CampaignStatus.PENDING_APPROVAL,
+  active: CampaignStatus.ACTIVE,
+  completed: CampaignStatus.COMPLETED,
+  failed: CampaignStatus.FAILED,
+};
 async function uploadToCloudinary(file: File): Promise<string> {
   const formData = new FormData();
   formData.append('file', file);
@@ -111,8 +125,9 @@ type CampaignCreatedEvent = {
 function formatCampaignData(
   dbCampaign: DbCampaign,
   event: CampaignCreatedEvent | undefined,
+  forceEvent = true,
 ) {
-  if (!event || !event.args) {
+  if (forceEvent && (!event || !event.args)) {
     console.error('No matching event found for campaign:', {
       campaignId: dbCampaign.id,
       campaignAddress: dbCampaign.campaignAddress,
@@ -134,7 +149,14 @@ function formatCampaignData(
       new Date(dbCampaign.endTime).getTime() / 1000,
     ).toString(),
     goalAmount: dbCampaign.fundingGoal,
-    totalRaised: '0',
+    totalRaised:
+      dbCampaign.payments?.reduce((accumulator, payment) => {
+        const value = Number(payment.amount);
+        if (isNaN(value)) {
+          return accumulator;
+        }
+        return accumulator + value;
+      }, 0) ?? 0,
     images: dbCampaign.images,
     slug: dbCampaign.slug,
     location: dbCampaign.location,
@@ -143,9 +165,12 @@ function formatCampaignData(
   };
 }
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const formData = await request.formData();
+    const session = await checkAuth(['user']);
+    const creatorAddress = session.user.address;
+
+    const formData = await req.formData();
 
     // Extract form fields
     const title = formData.get('title') as string;
@@ -153,15 +178,8 @@ export async function POST(request: Request) {
     const fundingGoal = formData.get('fundingGoal') as string;
     const startTime = formData.get('startTime') as string;
     const endTime = formData.get('endTime') as string;
-    const creatorAddress = formData.get('creatorAddress') as string;
     const statusRaw = formData.get('status') as string;
-    const statusMap: Record<string, CampaignStatus> = {
-      draft: CampaignStatus.DRAFT,
-      pending_approval: CampaignStatus.PENDING_APPROVAL,
-      active: CampaignStatus.ACTIVE,
-      completed: CampaignStatus.COMPLETED,
-      failed: CampaignStatus.FAILED,
-    };
+
     const status = statusMap[statusRaw] || CampaignStatus.DRAFT;
     const location = formData.get('location') as string;
     const category = formData.get('category') as string;
@@ -186,10 +204,7 @@ export async function POST(request: Request) {
       !endTime ||
       !creatorAddress
     ) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 },
-      );
+      throw new ApiParameterError('missing required fields');
     }
 
     // Generate a unique slug
@@ -206,20 +221,11 @@ export async function POST(request: Request) {
         imageUrl = await uploadToCloudinary(bannerImage);
       } catch (imageError) {
         console.error('Error uploading image:', imageError);
-        return NextResponse.json(
-          {
-            error: 'Image upload failed',
-            details:
-              imageError instanceof Error
-                ? imageError.message
-                : 'Unknown error',
-          },
-          { status: 422 },
-        );
+        throw new ApiUpstreamError('Image upload failed');
       }
     }
 
-    const campaign = await prisma.campaign.create({
+    const campaign = await db.campaign.create({
       data: {
         title,
         description,
@@ -247,38 +253,52 @@ export async function POST(request: Request) {
 
     console.log('Campaign created successfully:', campaign);
 
-    return NextResponse.json({ campaignId: campaign.id }, { status: 201 });
-  } catch (error) {
-    console.error('Failed to create campaign. Details:', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      name: error instanceof Error ? error.name : undefined,
-    });
-
-    return NextResponse.json(
-      {
-        error: 'Failed to create campaign',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 },
-    );
+    return response({ campaignId: campaign.id });
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }
 
-export async function PATCH(request: Request) {
+export async function PATCH(req: Request) {
   try {
-    const body = await request.json();
-    const { status, transactionHash, campaignAddress, campaignId } = body;
+    const session = await checkAuth(['user']);
+    const body = await req.json();
+    const {
+      status: statusRaw,
+      transactionHash,
+      campaignAddress,
+      campaignId,
+    } = body;
     if (!campaignId) {
-      return NextResponse.json(
-        { error: 'Campaign ID is required' },
-        { status: 400 },
-      );
+      throw new ApiParameterError('campaignId is required');
     }
-
-    const campaign = await prisma.campaign.update({
+    const status = statusMap[statusRaw] || undefined;
+    if (
+      ![
+        CampaignStatus.FAILED,
+        CampaignStatus.PENDING_APPROVAL,
+        CampaignStatus.DRAFT,
+        undefined,
+      ].includes(status)
+    ) {
+      // its only possible to set the whitelisted status to prevent api-calls that
+      // make the campaign active.
+      throw new ApiParameterError('Requested status update not allowed');
+    }
+    const instance = await db.campaign.findUnique({
       where: {
         id: parseInt(campaignId),
+      },
+    });
+    if (!instance) {
+      throw new ApiNotFoundError('Campaign not found');
+    }
+    if (instance.creatorAddress !== session?.user?.address) {
+      throw new ApiAuthNotAllowed('User cannot modify this campaign');
+    }
+    const campaign = await db.campaign.update({
+      where: {
+        id: instance.id,
       },
       data: {
         status,
@@ -287,28 +307,30 @@ export async function PATCH(request: Request) {
       },
     });
 
-    return NextResponse.json(campaign);
-  } catch (error) {
-    console.error('Failed to update campaign:', error);
-    return NextResponse.json(
-      { error: 'Failed to update campaign' },
-      { status: 500 },
-    );
+    return response(campaign);
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }
 
-export async function GET(request: Request) {
+export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') || 'active';
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
     const rounds = searchParams.get('rounds') || 'false';
+    const syncChain = searchParams.get('sync-chain') || 'false';
     const skip = (page - 1) * pageSize;
-
+    if (pageSize > 10) {
+      throw new ApiParameterError('Maximum Page size exceeded');
+    }
+    const forceEvents = syncChain === 'true' ? true : false;
     // status active should be enforced if access-token is not admin
-    const statusList =
-      status === 'active'
+    const admin = await isAdmin();
+    const statusList = !admin
+      ? [CampaignStatus.ACTIVE]
+      : status === 'active'
         ? [CampaignStatus.ACTIVE]
         : status === 'all'
           ? [
@@ -322,9 +344,8 @@ export async function GET(request: Request) {
               CampaignStatus.COMPLETED,
               CampaignStatus.ACTIVE,
             ];
-
     const [dbCampaigns, totalCount] = await Promise.all([
-      prisma.campaign.findMany({
+      db.campaign.findMany({
         where: {
           status: {
             in: statusList,
@@ -337,6 +358,10 @@ export async function GET(request: Request) {
               Round: true,
             },
           },
+          payments: {
+            // requires amount to be numeric: _sum: { amount: true },
+            where: { token: 'USDC', type: 'BUY', status: 'confirmed' },
+          },
         },
         skip,
         take: pageSize,
@@ -344,7 +369,7 @@ export async function GET(request: Request) {
           createdAt: 'desc',
         },
       }),
-      prisma.campaign.count({
+      db.campaign.count({
         where: {
           status: {
             in: statusList,
@@ -352,46 +377,40 @@ export async function GET(request: Request) {
         },
       }),
     ]);
-
-    const client = await getPublicClient();
-    // @ts-expect-error - client issue
-    const events = await getCampaignCreatedEvents(client);
-
+    let events: CampaignCreatedEvent[] = [];
+    if (forceEvents) {
+      const client = await getPublicClient();
+      // @ts-expect-error - client issue
+      events = await getCampaignCreatedEvents(client);
+    }
     const combinedCampaigns = dbCampaigns
-      .filter(
-        (
-          campaign: DbCampaign & {
-            RoundCampaigns?: Array<{ Round: { id: number; title: string } }>;
-          },
-        ) => campaign.transactionHash,
-      )
-      .map(
-        (
-          dbCampaign: DbCampaign & {
-            RoundCampaigns?: Array<{ Round: { id: number; title: string } }>;
-          },
-        ) => {
-          const event = events.find(
-            (onChainCampaign) =>
-              onChainCampaign.args?.campaignInfoAddress?.toLowerCase() ===
-              dbCampaign.campaignAddress?.toLowerCase(),
-          ) as CampaignCreatedEvent | undefined;
-          if (rounds === 'true') {
-            return formatCampaignData(
-              {
-                ...dbCampaign,
-                rounds:
-                  dbCampaign.RoundCampaigns?.map(({ Round }) => Round) ?? [],
-              },
-              event,
-            );
-          }
-          return formatCampaignData(dbCampaign, event);
-        },
-      )
+      .filter((campaign) => campaign.transactionHash)
+      .map((dbCampaign) => {
+        const event = events.find(
+          (onChainCampaign) =>
+            onChainCampaign.args?.campaignInfoAddress?.toLowerCase() ===
+            dbCampaign.campaignAddress?.toLowerCase(),
+        ) as CampaignCreatedEvent | undefined;
+        if (rounds === 'true') {
+          return formatCampaignData(
+            {
+              ...dbCampaign,
+              status: dbCampaign.status,
+              rounds:
+                dbCampaign.RoundCampaigns?.map(({ Round }) => ({
+                  id: Round.id,
+                  title: Round.title,
+                })) ?? [],
+            },
+            event,
+            forceEvents,
+          );
+        }
+        return formatCampaignData(dbCampaign, event, forceEvents);
+      })
       .filter(Boolean);
 
-    return NextResponse.json({
+    return response({
       campaigns: combinedCampaigns,
       pagination: {
         currentPage: page,
@@ -401,11 +420,7 @@ export async function GET(request: Request) {
         hasMore: skip + pageSize < totalCount,
       },
     });
-  } catch (error) {
-    console.error('Error fetching campaigns:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch campaigns' },
-      { status: 500 },
-    );
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

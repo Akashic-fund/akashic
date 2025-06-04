@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 FROM node:20-alpine3.20 AS devrunner
 RUN apk add --no-cache libc6-compat git \
-    jq bash zip mc expect curl python3 openssl
+    jq bash zip mc expect curl python3 openssl \
+    postgresql
 
 WORKDIR /app
 

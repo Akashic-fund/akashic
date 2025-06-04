@@ -1,33 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/server/db';
+import { ApiNotFoundError } from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
+import { RoundsWithIdParams } from '@/lib/api/types';
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const id = (await params).id; // Get the ID from the query parameters
-
+export async function GET(req: Request, { params }: RoundsWithIdParams) {
   try {
-    const round = await prisma.round.findUnique({
+    // public endpoint
+
+    const id = (await params).id; // Get the ID from the query parameters
+
+    const round = await db.round.findUnique({
       where: { id: Number(id) }, // Fetch the round by ID
     });
 
     if (!round) {
-      return NextResponse.json({ error: 'Round not found' }, { status: 404 }); // Handle not found
+      throw new ApiNotFoundError('User not found');
     }
 
-    return NextResponse.json(round, {
-      status: 200,
-    }); // Return the round as JSON
-  } catch (error) {
-    console.error('error fetching round: ', error);
-    NextResponse.json(
-      { error: 'Failed to fetch round' },
-      {
-        status: 500,
-      },
-    ); // Handle errors
-  } finally {
-    await prisma.$disconnect(); // Disconnect Prisma Client
+    return response(round);
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

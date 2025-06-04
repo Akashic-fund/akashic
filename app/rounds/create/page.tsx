@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAccount } from '@/contexts';
+import { useAuth } from '@/contexts';
 import {
   useWriteContract,
   useWaitForTransactionReceipt,
@@ -58,6 +58,7 @@ import { ALLO_ADDRESS } from '@/lib/constant';
 import { AlloABI } from '@/contracts/abi/qf/Allo';
 import { saveRoundAction } from '@/lib/actions/rounds/createRound';
 import { KickStarterQFABI } from '@/contracts/abi/qf/KickStarterQF';
+import { useChain } from '@/lib/web3/hooks/use-web3';
 
 // Define the schema
 const roundSchema = z.object({
@@ -159,15 +160,8 @@ type SubmissionStatus =
 
 export default function CreateRoundPage() {
   const router = useRouter();
-  const {
-    address: connectedAddress,
-    chain,
-    chainId,
-    isConnected,
-    isConnecting,
-    isReconnecting,
-    status: accountStatus, // 'connected', 'connecting', 'reconnecting', 'disconnected'
-  } = useAccount();
+  const { address: connectedAddress, authenticated } = useAuth();
+  const { chain, chainId } = useChain();
   const {
     writeContract,
     error: writeContractError,
@@ -255,7 +249,7 @@ export default function CreateRoundPage() {
       setStatus('creating_pool');
       setStatusMessage('Preparing pool creation transaction...');
 
-      if (!connectedAddress || !chainId) {
+      if (!connectedAddress) {
         setStatus('error');
         setStatusMessage('Cannot create pool: Wallet disconnected.');
         setError('root', { type: 'manual', message: 'Wallet disconnected.' });
@@ -305,7 +299,7 @@ export default function CreateRoundPage() {
         };
 
         // Managers (just the creator for now)
-        const managers = [connectedAddress];
+        const managers = [connectedAddress as `0x${string}`];
 
         // 2. Prepare Arguments using the imported helper function
         console.log('[Trigger Pool] Calling prepareCreatePoolArgs...');
@@ -363,14 +357,14 @@ export default function CreateRoundPage() {
       }
       // Add dependencies used inside the callback
     },
-    [connectedAddress, chainId, setError, writeContract],
+    [connectedAddress, setError, writeContract],
   ); // Added AlloABI dependency
 
   const saveRoundData = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async (confirmedReceipt: any, data: RoundFormData) => {
       console.log('[Save Data] Starting save process...');
-      if (!connectedAddress || !chainId || !deployedStrategyAddress) {
+      if (!connectedAddress || !authenticated || !deployedStrategyAddress) {
         setStatus('error');
         setStatusMessage(
           'Required information missing for saving (address, chainId, or strategyAddress).',
@@ -447,7 +441,6 @@ export default function CreateRoundPage() {
           ...data, // Spread form data
           poolId: parsedPoolId,
           transactionHash: confirmedReceipt.transactionHash,
-          managerAddress: connectedAddress,
           strategyAddress: deployedStrategyAddress,
           blockchain: chain?.name || String(chainId), // Use chain name or ID
         });
@@ -484,7 +477,14 @@ export default function CreateRoundPage() {
         });
       }
     },
-    [connectedAddress, chainId, deployedStrategyAddress, setError, chain?.name],
+    [
+      connectedAddress,
+      chainId,
+      authenticated,
+      deployedStrategyAddress,
+      setError,
+      chain?.name,
+    ],
   );
 
   // --- Check Allowance Logic ---
@@ -511,9 +511,9 @@ export default function CreateRoundPage() {
 
       const allowance = await checkErc20Allowance({
         tokenAddress: tokenAddress as Address,
-        ownerAddress: connectedAddress,
+        ownerAddress: connectedAddress as `0x${string}`,
         spenderAddress: ALLO_ADDRESS,
-        chainId: chainId,
+        chainId,
       });
 
       setCurrentAllowance(allowance);
@@ -774,10 +774,6 @@ export default function CreateRoundPage() {
   useEffect(() => {
     // Log detailed connection status whenever it changes
     console.log('Wagmi Connection Status Update:', {
-      accountStatus, // 'connected', 'connecting', 'reconnecting', 'disconnected'
-      isConnected,
-      isConnecting,
-      isReconnecting,
       connectedAddress,
       chainId,
     });
@@ -786,7 +782,7 @@ export default function CreateRoundPage() {
 
     // Attempt to clear connection error if status becomes 'connected'
     if (
-      accountStatus === 'connected' &&
+      authenticated &&
       connectedAddress &&
       chainId &&
       errors.root?.message?.includes('Please connect your wallet')
@@ -797,10 +793,7 @@ export default function CreateRoundPage() {
       setError('root', { message: '' });
     }
   }, [
-    accountStatus,
-    isConnected,
-    isConnecting,
-    isReconnecting,
+    authenticated,
     connectedAddress,
     chainId,
     errors.root?.message,
@@ -827,38 +820,16 @@ export default function CreateRoundPage() {
     console.log('[onSubmit] Triggered. Checking wallet connection...');
     // Log current state directly from the hook when submit is pressed
     console.log('[onSubmit] Current Wagmi State:', {
-      accountStatus,
-      isConnected,
-      isConnecting,
-      isReconnecting,
       connectedAddress,
       chainId,
     });
-    // console.log("[onSubmit] Current Privy State:", { ready, authenticated, userId: user?.id });
 
-    // *** REVISED CONNECTION CHECK ***
-    // Use the 'accountStatus' and 'isConnected' flags for a more robust check
-    if (
-      accountStatus !== 'connected' ||
-      !isConnected ||
-      !connectedAddress ||
-      !chainId
-    ) {
+    if (!authenticated) {
       console.error('[onSubmit] Wallet connection check failed.', {
-        accountStatus,
-        isConnected,
         connectedAddress,
-        chainId,
       });
-      let message =
+      const message =
         "Please connect your wallet and ensure it's on the correct network.";
-      if (accountStatus === 'connecting' || accountStatus === 'reconnecting') {
-        message =
-          'Wallet is currently connecting. Please wait a moment and try again.';
-      } else if (accountStatus === 'disconnected') {
-        message =
-          'Wallet disconnected. Please connect your wallet and try again.';
-      }
       setError('root', { type: 'manual', message });
       setStatus('idle'); // Go back to idle if wallet not ready
       return;
@@ -948,7 +919,7 @@ export default function CreateRoundPage() {
   const isCreateButtonDisabled =
     isProcessing ||
     (needsApproval && Number(matchingPool) > 0) ||
-    accountStatus !== 'connected';
+    !authenticated;
 
   const getAlertIcon = () => {
     if (status === 'error' || !!errors.root)
@@ -1315,28 +1286,25 @@ export default function CreateRoundPage() {
                     {isProcessing && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     )}
-                    {accountStatus === 'connecting' ||
-                    accountStatus === 'reconnecting'
-                      ? 'Connecting Wallet...'
-                      : status === 'success'
-                        ? 'Round Created'
-                        : status === 'saving'
-                          ? 'Saving...'
-                          : status === 'confirming_pool'
-                            ? 'Confirming Pool...'
-                            : status === 'creating_pool'
-                              ? 'Creating Pool...'
-                              : status === 'confirming_approval'
-                                ? 'Confirming Approval...'
-                                : status === 'approving_token'
-                                  ? 'Approving...'
-                                  : status === 'confirming_deployment'
-                                    ? 'Confirming Strategy...'
-                                    : status === 'deploying_strategy'
-                                      ? 'Deploying Strategy...'
-                                      : status === 'validating'
-                                        ? 'Validating...'
-                                        : 'Create Round'}
+                    {status === 'success'
+                      ? 'Round Created'
+                      : status === 'saving'
+                        ? 'Saving...'
+                        : status === 'confirming_pool'
+                          ? 'Confirming Pool...'
+                          : status === 'creating_pool'
+                            ? 'Creating Pool...'
+                            : status === 'confirming_approval'
+                              ? 'Confirming Approval...'
+                              : status === 'approving_token'
+                                ? 'Approving...'
+                                : status === 'confirming_deployment'
+                                  ? 'Confirming Strategy...'
+                                  : status === 'deploying_strategy'
+                                    ? 'Deploying Strategy...'
+                                    : status === 'validating'
+                                      ? 'Validating...'
+                                      : 'Create Round'}
                   </Button>
                 </div>
               </form>

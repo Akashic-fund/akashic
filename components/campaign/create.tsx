@@ -19,7 +19,6 @@ import {
   FormMessage,
 } from '@/components/ui';
 import { countries, categories } from '@/lib/constant';
-import { useAccount } from '@/contexts';
 import { enableFormDefault } from '@/lib/develop';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -30,6 +29,7 @@ import {
   useCreateCampaignContract,
   IOnCreateCampaignConfirmed,
 } from '@/lib/web3/hooks/useCreateCampaignContract';
+import { useAuth } from '@/contexts';
 
 const campaignSchema = z.object({
   title: z.string(),
@@ -55,7 +55,7 @@ const defaultValues: CampaignFormValues = {
   bannerImage: undefined,
 };
 export function CampaignCreate() {
-  const { address } = useAccount();
+  const { authenticated } = useAuth();
 
   const { toast } = useToast();
   const form = useForm<CampaignFormValues>({
@@ -68,9 +68,9 @@ export function CampaignCreate() {
   const [campaignId, setCampaignId] = useState<number | null>(null);
 
   const { mutateAsync: createCampaign, isPending: isCreateCampaignPending } =
-    useCreateCampaign({ userAddress: address });
+    useCreateCampaign();
   const { mutateAsync: updateCampaign, isPending: isUpdateCampaignPending } =
-    useUpdateCampaign({ userAddress: address });
+    useUpdateCampaign();
 
   const onConfirmed = useCallback(
     async ({
@@ -189,7 +189,7 @@ export function CampaignCreate() {
     async (data: CampaignFormValues) => {
       setDbError(null);
 
-      if (!address) {
+      if (!authenticated) {
         toast({
           variant: 'destructive',
           title: 'Error',
@@ -248,7 +248,7 @@ export function CampaignCreate() {
         setIsSubmitting(false);
       }
     },
-    [address, toast, createCampaign, createCampaignContract],
+    [authenticated, toast, createCampaign, createCampaignContract],
   );
   const onDeveloperSubmit = useCallback(async () => {
     if (!enableFormDefault) {

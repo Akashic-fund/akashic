@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, type JSX } from 'react';
 import { useSidebar, useFeatureFlag } from '@/contexts';
 import { usePathname } from 'next/navigation';
 import { Grid, Home, Star, BookCheck } from 'lucide-react';

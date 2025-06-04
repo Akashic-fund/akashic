@@ -14,29 +14,28 @@ import { useUserProfile } from '@/lib/hooks/useProfile';
 import { useCrowdsplitPaymentMethods } from '@/lib/crowdsplit/hooks/useCrowdsplit';
 
 export default function PaymentMethodsPage() {
-  const { isReady, address, authenticated } = useAuth();
-  const { data: profile, isPending: isProfilePending } =
-    useUserProfile(address);
+  const { isReady, authenticated } = useAuth();
+  const { data: profile, isPending: isProfilePending } = useUserProfile();
   const customerId = useMemo(
     () => profile?.crowdsplitCustomerId ?? null,
     [profile],
   );
   const { data: paymentMethods, isPending: isPaymentMethodsPending } =
-    useCrowdsplitPaymentMethods({ userAddress: address ?? '' });
-
-  if (!isReady || isProfilePending || isPaymentMethodsPending) {
-    return (
-      <PageLoading>
-        Please wait while we fetch your payment methods.
-      </PageLoading>
-    );
-  }
+    useCrowdsplitPaymentMethods();
 
   if (!authenticated) {
     return (
       <PageConnectWallet>
         Please connect your wallet to access your payment methods.
       </PageConnectWallet>
+    );
+  }
+
+  if (!isReady || isProfilePending || isPaymentMethodsPending) {
+    return (
+      <PageLoading>
+        Please wait while we fetch your payment methods.
+      </PageLoading>
     );
   }
 

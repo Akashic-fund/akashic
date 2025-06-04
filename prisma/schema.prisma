@@ -76,6 +76,10 @@ model User {
   address              String          @unique
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
+  prevSigninAt         DateTime?
+  lastSigninAt         DateTime?
+  lastSignoutAt        DateTime?
+  roles                String[]
   crowdsplitCustomerId String?
   email                String?
   username             String?         @unique
@@ -198,6 +202,7 @@ model Collection {
   description String?
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
+  // this should be called userAddress
   userId      String
   campaigns   CampaignCollection[]
   user        User                 @relation(fields: [userId], references: [address])

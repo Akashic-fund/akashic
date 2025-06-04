@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAccount } from '@/contexts';
+import { useAuth } from '@/contexts';
 import { type Address } from 'viem';
 import { RecipientStatus } from '@/types/round';
 
@@ -73,7 +73,7 @@ export function ReviewRecipients({
   // const publicClient = usePublicClient()
   const router = useRouter();
   const { toast } = useToast();
-  const { address: managerAddress } = useAccount();
+  const { authenticated } = useAuth();
   const [updatesToSend, setUpdatesToSend] = useState<RecipientUpdate[]>([]);
 
   console.log(
@@ -109,7 +109,7 @@ export function ReviewRecipients({
   }
 
   async function handleReviewRecipients() {
-    if (!managerAddress) {
+    if (!authenticated) {
       toast({
         title: 'Error',
         description: 'Wallet not connected.',
@@ -152,7 +152,6 @@ export function ReviewRecipients({
         body: JSON.stringify({
           roundId,
           updates: updatesToSend,
-          managerAddress: managerAddress.toLowerCase(),
         }),
       });
 

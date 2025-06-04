@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Collection } from '@/types';
 import { QueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts';
 
 const COLLECTIONS_QUERY_KEY = 'collections';
 const FEATURED_COLLECTIONS_QUERY_KEY = 'featured_collections';
@@ -16,13 +17,8 @@ async function fetchFeaturedCollections() {
   return data.collections ?? [];
 }
 
-async function fetchCollection(
-  collectionId: string,
-  address: string | null,
-): Promise<Collection> {
-  const response = await fetch(
-    `/api/collections/${collectionId}?userAddress=${address || ''}`,
-  );
+async function fetchCollection(collectionId: string): Promise<Collection> {
+  const response = await fetch(`/api/collections/${collectionId}`);
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to fetch user collection');
@@ -30,8 +26,8 @@ async function fetchCollection(
   const data = await response.json();
   return data.collection;
 }
-async function fetchUserCollections(address: string): Promise<Collection[]> {
-  const response = await fetch(`/api/collections/?userAddress=${address}`);
+async function fetchUserCollections(): Promise<Collection[]> {
+  const response = await fetch(`/api/collections`);
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to fetch user collections');
@@ -48,22 +44,25 @@ export function useFeaturedCollections() {
   });
 }
 
-export function useUserCollections(address?: string | null) {
+export function useUserCollections() {
+  const { authenticated } = useAuth();
+
   return useQuery({
-    queryKey: [COLLECTIONS_QUERY_KEY, 'user', address],
-    queryFn: () => fetchUserCollections(address!),
-    enabled: !!address,
+    queryKey: [COLLECTIONS_QUERY_KEY, 'user'],
+    queryFn: fetchUserCollections,
+    enabled: authenticated,
   });
 }
-export function useCollection(collectionId: string, address: string | null) {
+export function useCollection(collectionId: string) {
+  const { authenticated } = useAuth();
   return useQuery({
-    queryKey: [COLLECTIONS_QUERY_KEY, address, collectionId],
-    queryFn: () => fetchCollection(collectionId!, address),
-    enabled: !!collectionId,
+    queryKey: [COLLECTIONS_QUERY_KEY, collectionId],
+    queryFn: () => fetchCollection(collectionId!),
+    enabled: authenticated,
   });
 }
 
-export function useCreateCollection(address: string | null) {
+export function useCreateCollection() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -80,7 +79,6 @@ export function useCreateCollection(address: string | null) {
         body: JSON.stringify({
           name,
           description,
-          userAddress: address,
         }),
       });
 
@@ -94,12 +92,12 @@ export function useCreateCollection(address: string | null) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [COLLECTIONS_QUERY_KEY, 'user', address],
+        queryKey: [COLLECTIONS_QUERY_KEY, 'user'],
       });
     },
   });
 }
-export function useCreateItemInCollection(address: string | null) {
+export function useCreateItemInCollection() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -118,7 +116,6 @@ export function useCreateItemInCollection(address: string | null) {
         body: JSON.stringify({
           itemId,
           itemType,
-          userAddress: address,
         }),
       });
 
@@ -127,19 +124,19 @@ export function useCreateItemInCollection(address: string | null) {
         throw new Error(error.error || 'Failed to create collection item');
       }
       queryClient.invalidateQueries({
-        queryKey: [COLLECTIONS_QUERY_KEY, address, collectionId],
+        queryKey: [COLLECTIONS_QUERY_KEY, collectionId],
       });
 
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [COLLECTIONS_QUERY_KEY, 'user', address],
+        queryKey: [COLLECTIONS_QUERY_KEY, 'user'],
       });
     },
   });
 }
-export function useDeleteItemFromCollection(address: string | null) {
+export function useDeleteItemFromCollection() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -155,7 +152,6 @@ export function useDeleteItemFromCollection(address: string | null) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           itemId,
-          userAddress: address,
         }),
       });
 
@@ -164,43 +160,40 @@ export function useDeleteItemFromCollection(address: string | null) {
         throw new Error(error.error || 'Failed to delete item from collection');
       }
       queryClient.invalidateQueries({
-        queryKey: [COLLECTIONS_QUERY_KEY, address, collectionId],
+        queryKey: [COLLECTIONS_QUERY_KEY, collectionId],
       });
 
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [COLLECTIONS_QUERY_KEY, 'user', address],
+        queryKey: [COLLECTIONS_QUERY_KEY, 'user'],
       });
     },
   });
 }
-export function useDeleteCollection(address: string | null) {
+export function useDeleteCollection() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ collectionId }: { collectionId: string }) => {
-      const response = await fetch(
-        `/api/collections/${collectionId}?userAddress=${address}`,
-        {
-          method: 'DELETE',
-        },
-      );
+      const response = await fetch(`/api/collections/${collectionId}`, {
+        method: 'DELETE',
+      });
 
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to delete collection');
       }
       queryClient.invalidateQueries({
-        queryKey: [COLLECTIONS_QUERY_KEY, address, collectionId],
+        queryKey: [COLLECTIONS_QUERY_KEY, collectionId],
       });
 
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [COLLECTIONS_QUERY_KEY, 'user', address],
+        queryKey: [COLLECTIONS_QUERY_KEY, 'user'],
       });
       queryClient.invalidateQueries({
         queryKey: [FEATURED_COLLECTIONS_QUERY_KEY],
@@ -212,10 +205,10 @@ export function useDeleteCollection(address: string | null) {
 export async function prefetchFeaturedCollections(queryClient: QueryClient) {
   await queryClient.prefetchQuery({
     queryKey: [FEATURED_COLLECTIONS_QUERY_KEY],
-    queryFn: () => fetchFeaturedCollections(),
+    queryFn: fetchFeaturedCollections,
   });
 }
-export function useUpdateCollection(address: string | null) {
+export function useUpdateCollection() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -234,7 +227,6 @@ export function useUpdateCollection(address: string | null) {
         body: JSON.stringify({
           name,
           description,
-          userAddress: address,
         }),
       });
 
@@ -243,14 +235,14 @@ export function useUpdateCollection(address: string | null) {
         throw new Error(error.error || 'Failed to update collection');
       }
       queryClient.invalidateQueries({
-        queryKey: [COLLECTIONS_QUERY_KEY, address, collectionId],
+        queryKey: [COLLECTIONS_QUERY_KEY, collectionId],
       });
 
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [COLLECTIONS_QUERY_KEY, 'user', address],
+        queryKey: [COLLECTIONS_QUERY_KEY, 'user'],
       });
     },
   });

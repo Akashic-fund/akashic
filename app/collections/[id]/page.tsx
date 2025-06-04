@@ -12,12 +12,9 @@ import { CollectionItemList } from '@/components/collection/item-list';
 export default function CollectionDetailsPage() {
   const params = useParams();
   const { id } = params as { id: string };
-  const { address, authenticated } = useAuth();
+  const { authenticated } = useAuth();
 
-  const { data: collection, isPending: loading } = useCollectionQuery(
-    id,
-    address,
-  );
+  const { data: collection, isPending: loading } = useCollectionQuery(id);
 
   if (loading) {
     return <CollectionDetailLoading />;

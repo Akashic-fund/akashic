@@ -1,30 +1,33 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/server/db';
+import { checkAuth } from '@/lib/api/auth';
+import {
+  ApiAuthNotAllowed,
+  ApiNotFoundError,
+  ApiParameterError,
+} from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
 import { crowdsplitService } from '@/lib/crowdsplit/service';
 import { CrowdsplitTransactionsPostRequest } from '@/lib/crowdsplit/api/types';
 import { CrowdsplitTransactionResponse } from '@/lib/crowdsplit/types';
 
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const body = await request.json();
-    const {
-      campaignId,
-      userAddress,
-      type,
-      customerId,
-      currency,
-      amount,
-      paymentMethodId,
-    }: CrowdsplitTransactionsPostRequest = body;
+    const body: CrowdsplitTransactionsPostRequest = await req.json();
+    const { campaignId, type, customerId, currency, amount, paymentMethodId } =
+      body;
+    const session = await checkAuth(['user']);
 
-    const user = await prisma.user.findFirst({
-      where: { address: userAddress },
+    const user = await db.user.findUnique({
+      where: { address: session.user.address },
     });
     if (!user) {
-      return NextResponse.json({ error: 'Invalid user' }, { status: 400 });
+      throw new ApiNotFoundError('User not found');
+    }
+    if (!user.crowdsplitCustomerId) {
+      throw new ApiNotFoundError('User Profile not found');
     }
     if (user.crowdsplitCustomerId !== customerId) {
-      return NextResponse.json({ error: 'Invalid user' }, { status: 400 });
+      throw new ApiAuthNotAllowed('User Profile not matching');
     }
 
     let transaction: CrowdsplitTransactionResponse;
@@ -36,7 +39,7 @@ export async function POST(request: NextRequest) {
         cryptoCurrency: 'USDC', // Default or from request
         fiatAmount: amount,
         paymentMethodId,
-        walletAddress: userAddress,
+        walletAddress: session.user.address,
       });
     } else if (type === 'SELL') {
       transaction = await crowdsplitService.sellTransaction({
@@ -44,16 +47,13 @@ export async function POST(request: NextRequest) {
         fiatCurrency: currency,
         cryptoCurrency: 'USDC', // Default or from request
         cryptoAmount: amount,
-        walletAddress: userAddress,
+        walletAddress: session.user.address,
       });
     } else {
-      return NextResponse.json(
-        { error: 'Invalid transaction type' },
-        { status: 400 },
-      );
+      throw new ApiParameterError('Invalid transaction type');
     }
     // Create a payment record in the database
-    const payment = await prisma.payment.create({
+    const payment = await db.payment.create({
       data: {
         user: { connect: { id: user.id } },
         type,
@@ -68,21 +68,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
+    return response({
       success: true,
       paymentId: payment.id,
       transactionId: transaction.id,
     });
-  } catch (error) {
-    console.error('Error creating transaction:', error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to create transaction',
-      },
-      { status: 500 },
-    );
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

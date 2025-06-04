@@ -24,11 +24,11 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useAuth } from '@/contexts';
 import { useUserProfile } from '@/lib/hooks/useProfile';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useCrowdsplitUpdateWalletAddress } from '@/lib/crowdsplit/hooks/useCrowdsplit';
+import { useAuth } from '@/contexts';
 const walletAddressSchema = z.object({
   walletAddress: z
     .string()
@@ -47,13 +47,12 @@ interface WalletAddressesFormProps {
 
 export function WalletAddressesForm({ onSuccess }: WalletAddressesFormProps) {
   const router = useRouter();
-  const { address } = useAuth();
-  const { data: profile, isPending: isUserProfilePending } =
-    useUserProfile(address);
+  const { authenticated, address } = useAuth();
+  const { data: profile, isPending: isUserProfilePending } = useUserProfile();
   const {
     mutateAsync: updateWalletAddress,
     isPending: isUpdateUserProfilePending,
-  } = useCrowdsplitUpdateWalletAddress({ userAddress: address ?? '' });
+  } = useCrowdsplitUpdateWalletAddress();
 
   const form = useForm<WalletAddressFormValues>({
     resolver: zodResolver(walletAddressSchema),
@@ -69,7 +68,7 @@ export function WalletAddressesForm({ onSuccess }: WalletAddressesFormProps) {
 
   const onSubmit = useCallback(
     async (data: WalletAddressFormValues) => {
-      if (!address) {
+      if (!authenticated) {
         toast({
           title: 'Error',
           description:
@@ -104,7 +103,7 @@ export function WalletAddressesForm({ onSuccess }: WalletAddressesFormProps) {
         });
       }
     },
-    [address, onSuccess, updateWalletAddress, router],
+    [authenticated, onSuccess, updateWalletAddress, router],
   );
 
   return (
@@ -126,7 +125,9 @@ export function WalletAddressesForm({ onSuccess }: WalletAddressesFormProps) {
                 'font-mono text-sm',
               )}
             >
-              {!address || isUserProfilePending ? 'Not connected' : address}
+              {!authenticated || isUserProfilePending
+                ? 'Not connected'
+                : address}
             </code>
             {typeof profile?.recipientWallet === 'string' &&
               profile.recipientWallet.length > 0 && (

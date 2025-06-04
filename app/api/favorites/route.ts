@@ -1,23 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/server/db';
+import { checkAuth } from '@/lib/api/auth';
+import { ApiParameterError } from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
 
 // Toggle favorite status
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const { userAddress, campaignId } = await request.json();
-
-    if (!userAddress || !campaignId) {
-      return NextResponse.json(
-        { error: 'User address and campaign ID are required' },
-        { status: 400 },
-      );
+    const session = await checkAuth(['user']);
+    const { campaignId } = await req.json();
+    if (!campaignId) {
+      throw new ApiParameterError('CampaignId is missing');
     }
 
     // Check if favorite already exists
-    const existingFavorite = await prisma.favorite.findUnique({
+    const existingFavorite = await db.favorite.findUnique({
       where: {
         userAddress_campaignId: {
-          userAddress,
+          userAddress: session.user.address,
           campaignId: Number(campaignId),
         },
       },
@@ -25,60 +24,48 @@ export async function POST(request: NextRequest) {
 
     if (existingFavorite) {
       // Remove favorite if it exists
-      await prisma.favorite.delete({
+      await db.favorite.delete({
         where: {
           id: existingFavorite.id,
         },
       });
-      return NextResponse.json({ isFavorite: false });
+      return response({ isFavorite: false });
     } else {
       // Add favorite if it doesn't exist
-      await prisma.favorite.create({
+      await db.favorite.create({
         data: {
-          userAddress,
+          userAddress: session.user.address,
           campaignId: Number(campaignId),
         },
       });
-      return NextResponse.json({ isFavorite: true });
+      return response({ isFavorite: true });
     }
-  } catch (error) {
-    console.error('Error toggling favorite:', error);
-    return NextResponse.json(
-      { error: 'Failed to toggle favorite status' },
-      { status: 500 },
-    );
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }
 
 // Get favorite status for a campaign
-export async function GET(request: NextRequest) {
+export async function GET(req: Request) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const userAddress = searchParams.get('userAddress');
+    const session = await checkAuth(['user']);
+    const searchParams = new URL(req.url).searchParams;
     const campaignId = searchParams.get('campaignId');
-
-    if (!userAddress || !campaignId) {
-      return NextResponse.json(
-        { error: 'User address and campaign ID are required' },
-        { status: 400 },
-      );
+    if (!campaignId) {
+      throw new ApiParameterError('CampaignId is missing');
     }
 
-    const favorite = await prisma.favorite.findUnique({
+    const favorite = await db.favorite.findUnique({
       where: {
         userAddress_campaignId: {
-          userAddress,
+          userAddress: session.user.address,
           campaignId: Number(campaignId),
         },
       },
     });
 
-    return NextResponse.json({ isFavorite: !!favorite });
-  } catch (error) {
-    console.error('Error checking favorite status:', error);
-    return NextResponse.json(
-      { error: 'Failed to check favorite status' },
-      { status: 500 },
-    );
+    return response({ isFavorite: !!favorite });
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

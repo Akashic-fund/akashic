@@ -1,25 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { ensureUserExists } from '@/lib/user-helpers';
+import { db } from '@/server/db';
+import { checkAuth } from '@/lib/api/auth';
+import { ApiParameterError } from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
+import { PostCollectionsBody } from '@/lib/api/types';
 import { CampaignImage, CampaignStatus } from '@/types/campaign';
 
 // Get all collections for the current user
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    // Get user address from query params or headers
-    const { searchParams } = new URL(req.url);
-    const userAddress = searchParams.get('userAddress');
+    const session = await checkAuth(['user']);
 
-    if (!userAddress) {
-      return NextResponse.json(
-        { error: 'User address is required' },
-        { status: 400 },
-      );
-    }
-
-    const collections = await prisma.collection.findMany({
+    const collections = await db.collection.findMany({
       where: {
-        userId: userAddress,
+        userId: session.user.address,
       },
       include: {
         campaigns: {
@@ -98,90 +91,48 @@ export async function GET(req: NextRequest) {
       },
     );
 
-    return NextResponse.json({ collections: collectionsWithDetails });
-  } catch (error) {
-    console.error('Error fetching collections:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch collections' },
-      { status: 500 },
-    );
+    return response({ collections: collectionsWithDetails });
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }
-
 // Create a new collection
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { name, description, userAddress } = body;
+    const session = await checkAuth(['user']);
+    const body: PostCollectionsBody = await req.json();
+    const { name, description } = body;
 
-    if (!name) {
-      return NextResponse.json(
-        { error: 'Collection name is required' },
-        { status: 400 },
-      );
+    if (typeof name !== 'string' || !name.trim().length) {
+      throw new ApiParameterError('Collection name is required');
     }
 
-    if (!userAddress) {
-      return NextResponse.json(
-        { error: 'User address is required' },
-        { status: 400 },
-      );
-    }
-
-    console.log('Creating collection:', { name, description, userAddress });
-
-    try {
-      // Ensure the user exists
-      const userStatus = await ensureUserExists(userAddress);
-      console.log('User status:', userStatus);
-
-      // Check if collection with this name already exists for the user
-      const existingCollection = await prisma.collection.findFirst({
-        where: {
-          userId: userAddress,
-          name,
-        },
-      });
-
-      if (existingCollection) {
-        return NextResponse.json(
-          { error: 'Collection with this name already exists' },
-          { status: 400 },
-        );
-      }
-
-      // Create the new collection
-      const collection = await prisma.collection.create({
-        data: {
-          name,
-          description: description || '',
-          userId: userAddress,
-        },
-      });
-
-      console.log('Collection created:', collection);
-      return NextResponse.json({ collection });
-    } catch (dbError) {
-      console.error('Database error creating collection:', dbError);
-      return NextResponse.json(
-        {
-          error: 'Failed to create collection',
-          details:
-            dbError instanceof Error
-              ? dbError.message
-              : 'Unknown database error',
-        },
-        { status: 500 },
-      );
-    }
-  } catch (error) {
-    console.error('Error creating collection:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to create collection',
-        details: error instanceof Error ? error.message : 'Unknown error',
+    // Check if collection with this name already exists for the user
+    const existingCollection = await db.collection.findFirst({
+      where: {
+        userId: session.user.address,
+        name,
       },
-      { status: 500 },
-    );
+    });
+
+    if (existingCollection) {
+      throw new ApiParameterError(
+        'Collection with this name is already exists',
+      );
+    }
+
+    // Create the new collection
+    const collection = await db.collection.create({
+      data: {
+        name,
+        description: description || '',
+        userId: session.user.address,
+      },
+    });
+
+    console.log('Collection created:', collection);
+    return response({ collection });
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

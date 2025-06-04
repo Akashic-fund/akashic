@@ -1,7 +1,7 @@
 'use client';
 import { cn } from '@/lib/utils';
 import { useState, useEffect, useCallback } from 'react';
-import { useAccount } from '@/contexts';
+import { useAuth } from '@/contexts';
 import { Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -22,16 +22,13 @@ export function FavoriteButton({
   onToggle,
 }: FavoriteButtonProps) {
   const { toast } = useToast();
-  const { address } = useAccount();
+  const { authenticated } = useAuth();
   const [favourite, setFavourite] = useState<boolean>(initialIsFavorite);
-  const { data: isFavourite, isLoading } = useCheckUserFavourite(
-    address,
-    campaignId,
-  );
-  const { mutateAsync: updateFavourite } = useUpdateFavourite(address);
+  const { data: isFavourite, isLoading } = useCheckUserFavourite(campaignId);
+  const { mutateAsync: updateFavourite } = useUpdateFavourite();
   useEffect(() => setFavourite(isFavourite ?? false), [isFavourite]);
   const toggleFavourite = useCallback(async () => {
-    if (!address) {
+    if (!authenticated) {
       toast({
         title: 'Please connect your wallet to save favorites',
         variant: 'destructive',
@@ -58,7 +55,7 @@ export function FavoriteButton({
         description: 'Please try again later',
       });
     }
-  }, [address, updateFavourite, campaignId, favourite, onToggle, toast]);
+  }, [authenticated, updateFavourite, campaignId, favourite, onToggle, toast]);
 
   return (
     <Button

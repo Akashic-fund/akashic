@@ -1,15 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-
+import { db } from '@/server/db';
+import { checkAuth } from '@/lib/api/auth';
+import {
+  ApiParameterError,
+  ApiAuthNotAllowed,
+  ApiNotFoundError,
+} from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
+import {
+  CollectionsWithIdParams,
+  DeleteCollectionsWithIdBody,
+} from '@/lib/api/types';
 // Add an item to a collection
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(req: Request, { params }: CollectionsWithIdParams) {
   try {
+    const session = await checkAuth(['user']);
     const { id } = await params;
-    const body = await request.json();
-    const { itemId, itemType, userAddress } = body;
+    const body = await req.json();
+    const { itemId, itemType } = body;
+    const userAddress = session.user.address;
 
     console.log('Adding item to collection:', {
       collectionId: id,
@@ -20,208 +28,64 @@ export async function POST(
     });
 
     if (!itemId || !itemType) {
-      return NextResponse.json(
-        { error: 'Item ID and type are required' },
-        { status: 400 },
-      );
+      throw new ApiParameterError('missing required fields');
     }
 
-    if (!userAddress) {
-      return NextResponse.json(
-        { error: 'User address is required' },
-        { status: 400 },
-      );
-    }
-
-    try {
-      // First, check if the user exists in the database
-      let user = await prisma.user.findUnique({
-        where: {
-          address: userAddress,
-        },
-      });
-
-      // If user doesn't exist, create them
-      if (!user) {
-        console.log("User doesn't exist, creating new user:", userAddress);
-        user = await prisma.user.create({
-          data: {
-            address: userAddress,
-          },
-        });
-        console.log('User created:', user);
-      }
-
-      // Check if collection exists and belongs to the user
-      const collection = await prisma.collection.findUnique({
-        where: {
-          id,
-          userId: userAddress,
-        },
-      });
-
-      if (!collection) {
-        console.log("Collection not found or user doesn't have permission:", {
-          collectionId: id,
-          userAddress,
-          collectionsForUser: await prisma.collection.findMany({
-            where: { userId: userAddress },
-            select: { id: true, name: true },
-          }),
-        });
-
-        return NextResponse.json(
-          {
-            error:
-              'Collection not found or you do not have permission to modify it',
-            details: `Collection with ID ${id} not found for user ${userAddress}`,
-          },
-          { status: 404 },
-        );
-      }
-
-      // Find the campaign by address or ID
-      let campaign;
-
-      // First try to find by campaign address
-      campaign = await prisma.campaign.findUnique({
-        where: {
-          campaignAddress: itemId,
-        },
-      });
-
-      // If not found by address, try to find by ID
-      if (!campaign) {
-        // Try to parse the ID as a number if it's a string
-        const numericId =
-          typeof itemId === 'string' ? parseInt(itemId, 10) || 0 : itemId;
-
-        campaign = await prisma.campaign.findFirst({
-          where: {
-            OR: [{ id: numericId }, { slug: itemId }],
-          },
-        });
-      }
-
-      if (!campaign) {
-        return NextResponse.json(
-          {
-            error: 'Campaign not found',
-            details: `Could not find campaign with ID or address: ${itemId}`,
-          },
-          { status: 404 },
-        );
-      }
-
-      console.log('Found campaign:', campaign);
-
-      // Check if campaign already exists in the collection
-      const existingItem = await prisma.campaignCollection.findUnique({
-        where: {
-          campaignId_collectionId: {
-            campaignId: campaign.id,
-            collectionId: id,
-          },
-        },
-      });
-
-      if (existingItem) {
-        return NextResponse.json(
-          { error: 'Campaign already exists in this collection' },
-          { status: 400 },
-        );
-      }
-
-      // Add the campaign to the collection
-      const campaignCollection = await prisma.campaignCollection.create({
-        data: {
-          campaignId: campaign.id,
-          collectionId: id,
-        },
-      });
-
-      console.log('Item added to collection:', campaignCollection);
-      return NextResponse.json({ item: campaignCollection });
-    } catch (dbError) {
-      console.error('Database error adding item to collection:', dbError);
-      return NextResponse.json(
-        {
-          error: 'Failed to add item to collection',
-          details:
-            dbError instanceof Error
-              ? dbError.message
-              : 'Unknown database error',
-        },
-        { status: 500 },
-      );
-    }
-  } catch (error) {
-    console.error('Error adding item to collection:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to add item to collection',
-        details: error instanceof Error ? error.message : 'Unknown error',
+    // First, check if the user exists in the database
+    const user = await db.user.findUnique({
+      where: {
+        address: session.user.address,
       },
-      { status: 500 },
-    );
-  }
-}
-
-// Remove an item from a collection
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
-    const { id } = await params;
-    const body = await request.json();
-    const { itemId, userAddress } = body;
-
-    if (!itemId) {
-      return NextResponse.json(
-        { error: 'Item ID is required' },
-        { status: 400 },
-      );
-    }
-
-    if (!userAddress) {
-      return NextResponse.json(
-        { error: 'User address is required' },
-        { status: 400 },
-      );
+    });
+    if (!user) {
+      throw new ApiNotFoundError('Session user does not exist');
     }
 
     // Check if collection exists and belongs to the user
-    const collection = await prisma.collection.findUnique({
+    const collection = await db.collection.findUnique({
       where: {
         id,
-        userId: userAddress,
       },
     });
-
     if (!collection) {
-      return NextResponse.json(
-        { error: 'Collection not found' },
-        { status: 404 },
+      throw new ApiNotFoundError('Collection does not exist');
+    }
+    if (collection.userId !== session.user.address) {
+      throw new ApiAuthNotAllowed(
+        'User does not have permission to modify collection',
       );
     }
 
-    // Find the campaign by address
-    const campaign = await prisma.campaign.findUnique({
+    // Find the campaign by address or ID
+    let campaign;
+
+    // First try to find by campaign address
+    campaign = await db.campaign.findUnique({
       where: {
         campaignAddress: itemId,
       },
     });
 
+    // If not found by address, try to find by ID
     if (!campaign) {
-      return NextResponse.json(
-        { error: 'Campaign not found' },
-        { status: 404 },
-      );
+      // Try to parse the ID as a number if it's a string
+      const numericId =
+        typeof itemId === 'string' ? parseInt(itemId, 10) || 0 : itemId;
+
+      campaign = await db.campaign.findFirst({
+        where: {
+          OR: [{ id: numericId }, { slug: itemId }],
+        },
+      });
     }
 
-    // Remove the campaign from the collection
-    await prisma.campaignCollection.delete({
+    if (!campaign) {
+      throw new ApiNotFoundError('Campaign not found');
+    }
+    console.log('Found campaign:', campaign);
+
+    // Check if campaign already exists in the collection
+    const existingItem = await db.campaignCollection.findUnique({
       where: {
         campaignId_collectionId: {
           campaignId: campaign.id,
@@ -230,12 +94,79 @@ export async function DELETE(
       },
     });
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error removing item from collection:', error);
-    return NextResponse.json(
-      { error: 'Failed to remove item from collection' },
-      { status: 500 },
-    );
+    if (existingItem) {
+      throw new ApiParameterError('Campaign already exists in this collection');
+    }
+
+    // Add the campaign to the collection
+    const campaignCollection = await db.campaignCollection.create({
+      data: {
+        campaign: { connect: { id: campaign.id } },
+        collection: { connect: { id } },
+      },
+    });
+
+    console.log('Item added to collection:', campaignCollection);
+    return response({ item: campaignCollection });
+  } catch (error: unknown) {
+    return handleError(error);
+  }
+}
+
+// Remove an item from a collection
+export async function DELETE(
+  req: Request,
+  { params }: CollectionsWithIdParams,
+) {
+  try {
+    const session = await checkAuth(['user']);
+    const { id } = await params;
+    const body: DeleteCollectionsWithIdBody = await req.json();
+    const { itemId } = body;
+
+    if (!itemId) {
+      throw new ApiParameterError('itemId is required');
+    }
+
+    // Check if collection exists and belongs to the user
+    const collection = await db.collection.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!collection) {
+      throw new ApiNotFoundError('Collection not found');
+    }
+    if (collection.userId !== session.user.address) {
+      throw new ApiAuthNotAllowed(
+        'User does not have permission to modify collection',
+      );
+    }
+
+    // Find the campaign by address
+    const campaign = await db.campaign.findUnique({
+      where: {
+        campaignAddress: itemId,
+      },
+    });
+
+    if (!campaign) {
+      throw new ApiNotFoundError('Campaign not found');
+    }
+
+    // Remove the campaign from the collection
+    await db.campaignCollection.delete({
+      where: {
+        campaignId_collectionId: {
+          campaignId: campaign.id,
+          collectionId: id,
+        },
+      },
+    });
+
+    return response({ success: true });
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

@@ -1,69 +1,38 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { CrowdsplitKycCompletePostRequest } from '@/lib/crowdsplit/api/types';
+import { db } from '@/server/db';
+import { checkAuth } from '@/lib/api/auth';
+import { ApiNotFoundError } from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
 
 // manual/administrative change of a user's kyc
-// TODO: should only be available for admins
-export async function POST(request: NextRequest) {
+// TODO: should only be executed with some kind of signature from crowdsplit
+export async function POST() {
   try {
-    const data: CrowdsplitKycCompletePostRequest = await request.json();
-    const { userAddress } = data;
+    const session = await checkAuth(['user']);
 
-    if (!userAddress) {
-      return NextResponse.json(
-        {
-          error: 'Missing user address',
-        },
-        { status: 400, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
-
-    // Find user by crowdsplitCustomerId
-    const user = await prisma.user.findUnique({
-      where: { address: userAddress },
+    const user = await db.user.findUnique({
+      where: { address: session.user.address },
     });
-
     if (!user) {
-      return NextResponse.json(
-        {
-          error: 'User not found',
-        },
-        { status: 404, headers: { 'Content-Type': 'application/json' } },
-      );
+      throw new ApiNotFoundError('User not found');
     }
     if (!user.crowdsplitCustomerId) {
-      return NextResponse.json(
-        {
-          error: 'User profile not found',
-        },
-        { status: 404, headers: { 'Content-Type': 'application/json' } },
-      );
+      throw new ApiNotFoundError('User Profile not found');
     }
 
-    const updatedUser = await prisma.user.updateMany({
+    const updatedUser = await db.user.update({
       where: { id: user.id },
       data: { isKycCompleted: true },
     });
 
     if (!updatedUser) {
-      return NextResponse.json(
-        { error: 'User not found or update failed' },
-        { status: 404 },
-      );
+      throw new ApiNotFoundError('User to update not found');
     }
 
-    return NextResponse.json({
+    return response({
       success: true,
       message: 'KYC status set to completed',
     });
-  } catch (error) {
-    console.error('Error completing KYC:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to complete KYC',
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    );
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

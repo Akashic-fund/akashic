@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/server/db';
+import { response, handleError } from '@/lib/api/response';
+
 import { CampaignImage } from '@/types/campaign';
 
 // Get featured collections
@@ -7,7 +8,7 @@ export async function GET() {
   try {
     // For now, we'll just return the most recent collections with items
     // In a real implementation, you might have a "featured" flag or curated list
-    const collections = await prisma.collection.findMany({
+    const collections = await db.collection.findMany({
       take: 6,
       where: {
         campaigns: {
@@ -88,12 +89,8 @@ export async function GET() {
       },
     );
 
-    return NextResponse.json({ collections: collectionsWithDetails });
-  } catch (error) {
-    console.error('Error fetching featured collections:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch featured collections' },
-      { status: 500 },
-    );
+    return response({ collections: collectionsWithDetails });
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

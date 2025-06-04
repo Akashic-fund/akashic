@@ -1,4 +1,5 @@
 'use server';
+import { checkAuth } from '@/lib/api/auth';
 import { db } from '@/server/db';
 import { CampaignDisplay } from '@/types/campaign';
 import { revalidatePath } from 'next/cache';
@@ -6,7 +7,6 @@ import { revalidatePath } from 'next/cache';
 export async function campaignUpdateFormAction(
   campaign: CampaignDisplay,
   formData: FormData,
-  userAddress: string,
 ) {
   try {
     const title = formData.get('title');
@@ -20,12 +20,9 @@ export async function campaignUpdateFormAction(
     ) {
       throw new Error('Invalid form data');
     }
+    const session = await checkAuth(['user']);
 
-    if (!userAddress) {
-      throw new Error('Please connect your wallet to post update');
-    }
-
-    if (userAddress.toLowerCase() !== campaign.creatorAddress.toLowerCase()) {
+    if (session.user.address !== campaign.creatorAddress) {
       throw new Error('Only the campaign creator can post updates');
     }
 
@@ -34,7 +31,7 @@ export async function campaignUpdateFormAction(
         title: title,
         content: content,
         campaignId: campaign.id,
-        creatorAddress: userAddress,
+        creatorAddress: session.user.address,
       },
     });
 

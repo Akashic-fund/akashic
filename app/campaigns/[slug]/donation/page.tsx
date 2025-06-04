@@ -10,14 +10,14 @@ export default async function Page({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const campaign: Campaign = await getCampaign((await params).slug);
-
+  const { slug } = await params;
+  const campaign: Campaign = await getCampaign(slug);
   return (
     <>
       <PageHeaderSticky message="Donating to" title={campaign.title} />
       <PageMainTwoColums>
         <DonationForm campaign={campaign} />
-        <ProjectInfo campaign={campaign} />
+        <ProjectInfo slug={slug} />
       </PageMainTwoColums>
     </>
   );

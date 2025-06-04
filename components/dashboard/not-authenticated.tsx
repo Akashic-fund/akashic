@@ -1,6 +1,9 @@
-import { Card, CardContent } from '@/components/ui';
+import { Card, CardContent, Button } from '@/components/ui';
+import { useAuth } from '@/contexts';
 import { Users } from 'lucide-react';
+import Image from 'next/image';
 export function DashboardNotAuthenticated() {
+  const { login } = useAuth();
   return (
     <Card className="border-2 border-dashed border-gray-200 bg-white/50 backdrop-blur-sm">
       <CardContent className="flex flex-col items-center justify-center p-12 text-center">
@@ -14,6 +17,14 @@ export function DashboardNotAuthenticated() {
           Please connect your wallet to view your campaign dashboard and manage
           your fundraising activities.
         </p>
+        <Button
+          variant="outline"
+          className="bg-purple-50 font-semibold text-purple-600 hover:bg-purple-100"
+          onClick={login}
+        >
+          Connect Wallet
+          <Image src="/wallet-icon.png" alt="wallet" width={14} height={14} />
+        </Button>
       </CardContent>
     </Card>
   );

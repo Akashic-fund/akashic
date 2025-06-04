@@ -1,18 +1,36 @@
+'use client';
+
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { Card } from './ui/card';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Campaign } from '../types/campaign';
-
+import { useCampaign } from '@/lib/hooks/useCampaigns';
+import { useMemo } from 'react';
+import { CampaignImage, Payment } from '@/types/campaign';
 interface ProjectInfoProps {
-  campaign: Campaign;
+  slug: string;
 }
 
-export default function ProjectInfo({ campaign }: ProjectInfoProps) {
+export default function ProjectInfo({ slug }: ProjectInfoProps) {
+  const { data: campaign, isPending } = useCampaign(slug);
+  const amountRaised = useMemo(() => {
+    if (!Array.isArray(campaign?.payments)) {
+      return 0;
+    }
+    return campaign.payments.reduce((accumulator: number, payment: Payment) => {
+      if (isNaN(Number(payment.amount))) {
+        return accumulator;
+      }
+      return accumulator + Number(payment.amount);
+    }, 0);
+  }, [campaign]);
+  if (isPending || !campaign) {
+    return null;
+  }
   const mainImage =
-    campaign.images?.find((img) => img.isMainImage) || campaign.images?.[0];
-
+    campaign.images?.find((img: CampaignImage) => img.isMainImage) ||
+    campaign.images?.[0];
   return (
     <div className="space-y-6">
       <Card className="w-fit overflow-hidden">
@@ -40,7 +58,7 @@ export default function ProjectInfo({ campaign }: ProjectInfoProps) {
           <Avatar>
             <AvatarImage src="/placeholder.svg" />
             <AvatarFallback>
-              {campaign.owner.slice(0, 2).toUpperCase()}
+              {campaign.creatorAddress.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <h1 className="text-xl font-semibold text-pink-500">
@@ -51,7 +69,7 @@ export default function ProjectInfo({ campaign }: ProjectInfoProps) {
         <div>
           <div className="text-sm text-muted-foreground">Raised</div>
           <div className="text-2xl font-bold">
-            ${parseFloat(campaign.amountRaised || '0').toLocaleString()}
+            ${amountRaised.toLocaleString()}
           </div>
         </div>
 

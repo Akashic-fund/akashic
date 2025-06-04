@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAccount } from '@/contexts';
+import { useAuth } from '@/contexts';
 import { type Address } from 'viem';
 // import { ReviewRecipients } from "@/components/review-recipients"
 import { ApplicationStatus } from '@/lib/qfInteractions';
@@ -42,34 +42,28 @@ export function CheckWalletServer({
   roundAdminAddress,
   // roundStatusKey
 }: CheckWalletServerProps) {
-  const { address, isConnected } = useAccount();
+  const { authenticated, address } = useAuth();
   const [userCampaigns, setUserCampaigns] = useState<Campaign[]>([]);
   const [pendingRecipients, setPendingRecipients] = useState<Recipient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  console.log(
-    'poolId',
+  console.log({
     poolId,
-    'roundId',
     roundId,
-    'strategyAddress',
     strategyAddress,
-    'pendingRecipients',
     pendingRecipients,
-  );
+  });
 
-  const isAdmin = isConnected && address === roundAdminAddress;
+  const isAdmin = authenticated && address === roundAdminAddress;
   console.log('userCampaigns', userCampaigns);
 
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
 
-      if (isConnected && address) {
+      if (authenticated) {
         // Load user campaigns if the wallet is connected
         try {
-          const response = await fetch(
-            `/api/campaigns/user?address=${address}`,
-          );
+          const response = await fetch(`/api/campaigns/user`);
           const data = await response.json();
 
           if (data.campaigns && Array.isArray(data.campaigns)) {
@@ -111,7 +105,7 @@ export function CheckWalletServer({
     }
 
     loadData();
-  }, [address, isConnected, isAdmin, roundId]);
+  }, [address, authenticated, isAdmin, roundId]);
 
   if (isLoading) return null;
 

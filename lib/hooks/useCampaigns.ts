@@ -4,6 +4,7 @@ import {
   useQueryClient,
   useInfiniteQuery,
 } from '@tanstack/react-query';
+import { useAuth } from '@/contexts';
 import type { Campaign } from '@/types/campaign';
 import { QueryClient } from '@tanstack/react-query';
 
@@ -30,6 +31,16 @@ async function fetchCampaigns(status?: string) {
   const data = await response.json();
   return data.campaigns;
 }
+async function fetchCampaign(slug?: string) {
+  const url = `/api/campaigns/${slug}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to fetch campaign');
+  }
+  const data = await response.json();
+  return data.campaign;
+}
 
 async function fetchCampaignPage({
   pageParam = 1,
@@ -46,8 +57,8 @@ async function fetchCampaignPage({
   return (await response.json()) as PaginatedResponse;
 }
 
-async function fetchUserCampaigns(address: string): Promise<Campaign[]> {
-  const response = await fetch(`/api/campaigns/user?address=${address}`);
+async function fetchUserCampaigns(): Promise<Campaign[]> {
+  const response = await fetch(`/api/campaigns/user`);
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to fetch user campaigns');
@@ -55,35 +66,17 @@ async function fetchUserCampaigns(address: string): Promise<Campaign[]> {
   const data = await response.json();
   return data.campaigns;
 }
-interface IUpdateCampaignHook {
-  userAddress: string | undefined;
-}
 interface IUpdateCampaign {
   campaignId: number;
   status?: string;
   transactionHash?: string;
   campaignAddress?: string;
 }
-interface IUpdateCampaignApi extends IUpdateCampaign {
-  userAddress: string;
-}
-async function updateCampaign({
-  campaignId,
-  status,
-  transactionHash,
-  campaignAddress,
-  userAddress,
-}: IUpdateCampaignApi) {
+async function updateCampaign(variables: IUpdateCampaign) {
   const response = await fetch('/api/campaigns', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      campaignId,
-      status,
-      transactionHash,
-      campaignAddress,
-      userAddress,
-    }),
+    body: JSON.stringify(variables),
   });
 
   if (!response.ok) {
@@ -92,9 +85,6 @@ async function updateCampaign({
   }
 
   return response.json();
-}
-interface ICreateCampaignHook {
-  userAddress?: string;
 }
 interface ICreateCampaign {
   title: string;
@@ -107,9 +97,6 @@ interface ICreateCampaign {
   category: string;
   bannerImage?: File;
 }
-interface ICreateCampaignApi extends ICreateCampaign {
-  address: string;
-}
 async function createCampaign({
   title,
   description,
@@ -119,16 +106,14 @@ async function createCampaign({
   status = 'draft',
   location,
   category,
-  address,
   bannerImage,
-}: ICreateCampaignApi) {
+}: ICreateCampaign) {
   const formDataToSend = new FormData();
   formDataToSend.append('title', title);
   formDataToSend.append('description', description);
   formDataToSend.append('fundingGoal', fundingGoal);
   formDataToSend.append('startTime', startTime);
   formDataToSend.append('endTime', endTime);
-  formDataToSend.append('creatorAddress', address);
   formDataToSend.append('status', status);
   formDataToSend.append('location', location);
   formDataToSend.append('category', category);
@@ -151,29 +136,18 @@ async function createCampaign({
   }
   return response.json();
 }
-interface IApproveCampaignHook {
-  adminAddress?: string | null;
-}
 interface IApproveCampaign {
   campaignId: number;
   treasuryAddress: string;
 }
-interface IApproveCampaignApi extends IApproveCampaign {
-  adminAddress: string;
-}
-async function approveCampaign({
-  campaignId,
-  treasuryAddress,
-  adminAddress,
-}: IApproveCampaignApi) {
-  const response = await fetch(`/api/campaigns/${campaignId}/approve`, {
-    method: 'POST',
-    body: JSON.stringify({
-      treasuryAddress,
-      adminAddress,
-      status: 'active',
-    }),
-  });
+async function approveCampaign(variables: IApproveCampaign) {
+  const response = await fetch(
+    `/api/campaigns/${variables.campaignId}/approve`,
+    {
+      method: 'POST',
+      body: JSON.stringify(variables),
+    },
+  );
   if (!response.ok) {
     let errorMsg = 'Failed to approve campaign';
     try {
@@ -191,6 +165,13 @@ export function useCampaigns(status?: string) {
   return useQuery({
     queryKey: [CAMPAIGNS_QUERY_KEY, status],
     queryFn: () => fetchCampaigns(status),
+    enabled: true,
+  });
+}
+export function useCampaign(slug?: string) {
+  return useQuery({
+    queryKey: [CAMPAIGNS_QUERY_KEY, slug],
+    queryFn: () => fetchCampaign(slug),
     enabled: true,
   });
 }
@@ -222,55 +203,39 @@ export function useInfiniteCampaigns(
   });
 }
 
-export function useUserCampaigns(address?: string | null) {
+export function useUserCampaigns() {
+  const { authenticated } = useAuth();
   return useQuery({
-    queryKey: [CAMPAIGNS_QUERY_KEY, 'user', address],
-    queryFn: () => fetchUserCampaigns(address!),
-    enabled: !!address,
+    queryKey: [CAMPAIGNS_QUERY_KEY, 'user'],
+    queryFn: fetchUserCampaigns,
+    enabled: authenticated,
   });
 }
-export function useUpdateCampaign({ userAddress }: IUpdateCampaignHook) {
+export function useUpdateCampaign() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (variables: IUpdateCampaign) => {
-      if (!userAddress) {
-        throw new Error('Cannot update Campaign without a wallet address');
-      }
-      return updateCampaign({ ...variables, userAddress });
-    },
+    mutationFn: updateCampaign,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [CAMPAIGNS_QUERY_KEY] });
     },
   });
 }
-export function useCreateCampaign({ userAddress }: ICreateCampaignHook) {
+export function useCreateCampaign() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (variables: ICreateCampaign) => {
-      if (!userAddress) {
-        throw new Error('Cannot create Campaign without a wallet address');
-      }
-      return createCampaign({ ...variables, address: userAddress });
-    },
+    mutationFn: createCampaign,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [CAMPAIGNS_QUERY_KEY] });
     },
   });
 }
-export function useAdminApproveCampaign({
-  adminAddress,
-}: IApproveCampaignHook) {
+export function useAdminApproveCampaign() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (variables: IApproveCampaign) => {
-      if (!adminAddress) {
-        throw new Error('Cannot approve Campaign without a wallet address');
-      }
-      return approveCampaign({ ...variables, adminAddress });
-    },
+    mutationFn: approveCampaign,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [CAMPAIGNS_QUERY_KEY] });
     },

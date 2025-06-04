@@ -13,21 +13,20 @@ import { PageHome } from '@/components/page/home';
 import { PageDefaultContent } from '@/components/page/default-content';
 export default function ProfilePage() {
   const [editProfile, setEditProfile] = useState(false);
-  const { address, authenticated, isReady } = useAuth();
-  const { data: profile, isPending: isProfilePending } =
-    useUserProfile(address);
+  const { authenticated, isReady } = useAuth();
+  const { data: profile, isPending: isProfilePending } = useUserProfile();
   const onEditProfile = useCallback(() => {
     setEditProfile((prevState) => !prevState);
   }, [setEditProfile]);
   const onEditSuccess = useCallback(() => {
     setEditProfile(false);
   }, [setEditProfile]);
-  if (!isReady || (address && isProfilePending)) {
+
+  if (!isReady || isProfilePending) {
     return (
       <PageLoading>Please wait while we initialize your profile.</PageLoading>
     );
   }
-
   if (!authenticated) {
     return (
       <PageConnectWallet>

@@ -1,49 +1,52 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/server/db';
+import { checkAuth } from '@/lib/api/auth';
+import { ApiAuthNotAllowed, ApiNotFoundError } from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
 
 export async function POST(req: Request) {
   try {
+    const session = await checkAuth(['user']);
     const data = await req.json();
-
-    // Get or create user
-    const user = await prisma.user.upsert({
-      where: { address: data.userAddress },
-      update: {},
-      create: { address: data.userAddress },
+    const user = await db.user.findUnique({
+      where: { address: session.user.address },
     });
-
-    const payment = await prisma.payment.create({
+    if (!user) {
+      throw new ApiNotFoundError('User not found');
+    }
+    const payment = await db.payment.create({
       data: {
         amount: data.amount,
         token: data.token,
-        campaignId: data.campaignId,
         isAnonymous: data.isAnonymous,
         status: data.status,
         transactionHash: data.transactionHash,
-        type: data.type,
+        type: data.type ?? 'BUY',
         user: { connect: { id: user.id } },
         campaign: { connect: { id: data.campaignId } },
       },
     });
 
-    return NextResponse.json({ paymentId: payment.id });
-  } catch (error) {
-    console.error('Payment creation error:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to create payment',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 },
-    );
+    return response({ paymentId: payment.id });
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }
 
 export async function PATCH(req: Request) {
   try {
+    const session = await checkAuth(['user']);
     const data = await req.json();
 
-    const payment = await prisma.payment.update({
+    const instance = await db.payment.findUnique({
+      where: { id: data.paymentId },
+    });
+    if (!instance) {
+      throw new ApiNotFoundError('Payment not found');
+    }
+    if (instance.userId !== session.user.dbId) {
+      throw new ApiAuthNotAllowed('Session not allowed to modify this payment');
+    }
+    const payment = await db.payment.update({
       where: { id: data.paymentId },
       data: {
         status: data.status,
@@ -51,15 +54,8 @@ export async function PATCH(req: Request) {
       },
     });
 
-    return NextResponse.json({ payment });
-  } catch (error) {
-    console.error('Payment update error:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to update payment',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 },
-    );
+    return response({ payment });
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

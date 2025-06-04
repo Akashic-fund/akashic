@@ -1,22 +1,26 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/server/db';
+import { checkAuth } from '@/lib/api/auth';
+import {
+  ApiParameterError,
+  ApiAuthNotAllowed,
+  ApiNotFoundError,
+} from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
+import {
+  CollectionsWithIdParams,
+  PutCollectionsWithIdBody,
+} from '@/lib/api/types';
+
 import { CampaignImage } from '@/types/campaign';
 
 // Get a specific collection
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(req: Request, { params }: CollectionsWithIdParams) {
   try {
-    // Get user address from query params
-    const { searchParams } = new URL(request.url);
-    const userAddress = searchParams.get('userAddress');
-
+    const session = await checkAuth(['user']);
+    const id = (await params).id;
     // Find the collection without requiring user ownership
-    const collection = await prisma.collection.findUnique({
-      where: {
-        id: (await params).id,
-      },
+    const collection = await db.collection.findUnique({
+      where: { id },
       include: {
         campaigns: {
           include: {
@@ -31,14 +35,11 @@ export async function GET(
     });
 
     if (!collection) {
-      return NextResponse.json(
-        { error: 'Collection not found' },
-        { status: 404 },
-      );
+      throw new ApiNotFoundError('Collection not found');
     }
 
     // Check if the user is the owner
-    const isOwner = userAddress && collection.userId === userAddress;
+    const isOwner = collection.userId === session.user.address;
 
     // Transform the data to match the expected format in the frontend
     const collectionWithDetails = {
@@ -73,73 +74,53 @@ export async function GET(
       ),
     };
 
-    return NextResponse.json({ collection: collectionWithDetails });
-  } catch (error) {
-    console.error('Error fetching collection:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch collection' },
-      { status: 500 },
-    );
+    return response({ collection: collectionWithDetails });
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }
 
 // Update a collection
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PUT(req: Request, { params }: CollectionsWithIdParams) {
   try {
+    const session = await checkAuth(['user']);
     const { id } = await params;
-    const body = await request.json();
-    const { name, description, userAddress } = body;
-
-    if (!userAddress) {
-      return NextResponse.json(
-        { error: 'User address is required' },
-        { status: 400 },
-      );
-    }
+    const body: PutCollectionsWithIdBody = await req.json();
+    const { name, description } = body;
 
     // Check if collection exists and belongs to the user
-    const existingCollection = await prisma.collection.findUnique({
+    const existingCollection = await db.collection.findUnique({
       where: {
         id,
-        userId: userAddress,
       },
     });
 
     if (!existingCollection) {
-      return NextResponse.json(
-        {
-          error:
-            'Collection not found or you do not have permission to edit it',
-        },
-        { status: 404 },
+      throw new ApiNotFoundError('Collection not found');
+    }
+    if (existingCollection.userId !== session.user.address) {
+      throw new ApiAuthNotAllowed(
+        'User does not have permission to modify collection',
       );
     }
 
     // Check if new name conflicts with another collection
     if (name && name !== existingCollection.name) {
-      const nameConflict = await prisma.collection.findFirst({
+      const nameConflict = await db.collection.findFirst({
         where: {
-          userId: userAddress,
+          userId: session.user.address,
           name,
           id: { not: id },
         },
       });
 
       if (nameConflict) {
-        return NextResponse.json(
-          { error: 'Collection with this name already exists' },
-          { status: 400 },
-        );
+        throw new ApiParameterError('Collection with this name already exists');
       }
     }
 
-    const updatedCollection = await prisma.collection.update({
-      where: {
-        id,
-      },
+    const updatedCollection = await db.collection.update({
+      where: { id },
       data: {
         name: name || existingCollection.name,
         description:
@@ -149,108 +130,48 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json({ collection: updatedCollection });
-  } catch (error) {
-    console.error('Error updating collection:', error);
-    return NextResponse.json(
-      { error: 'Failed to update collection' },
-      { status: 500 },
-    );
+    return response({ collection: updatedCollection });
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }
 
 // Delete a collection
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  req: Request,
+  { params }: CollectionsWithIdParams,
 ) {
   try {
-    // Get user address from query params
+    const session = await checkAuth(['user']);
     const { id } = await params;
-    const { searchParams } = new URL(request.url);
-    const userAddress = searchParams.get('userAddress');
 
-    if (!userAddress) {
-      return NextResponse.json(
-        { error: 'User address is required' },
-        { status: 400 },
-      );
-    }
-
-    try {
-      // First, check if the user exists in the database
-      let user = await prisma.user.findUnique({
-        where: {
-          address: userAddress,
-        },
-      });
-
-      // If user doesn't exist, create them
-      if (!user) {
-        console.log("User doesn't exist, creating new user:", userAddress);
-        user = await prisma.user.create({
-          data: {
-            address: userAddress,
-            // No name field in the schema
-          },
-        });
-        console.log('User created:', user);
-      }
-
-      // Check if collection exists and belongs to the user
-      const existingCollection = await prisma.collection.findUnique({
-        where: {
-          id,
-          userId: userAddress,
-        },
-      });
-
-      if (!existingCollection) {
-        return NextResponse.json(
-          {
-            error:
-              'Collection not found or you do not have permission to delete it',
-          },
-          { status: 404 },
-        );
-      }
-
-      // First delete all campaign associations
-      await prisma.campaignCollection.deleteMany({
-        where: {
-          collectionId: id,
-        },
-      });
-
-      // Then delete the collection
-      await prisma.collection.delete({
-        where: {
-          id,
-        },
-      });
-
-      return NextResponse.json({ success: true });
-    } catch (dbError) {
-      console.error('Database error deleting collection:', dbError);
-      return NextResponse.json(
-        {
-          error: 'Failed to delete collection',
-          details:
-            dbError instanceof Error
-              ? dbError.message
-              : 'Unknown database error',
-        },
-        { status: 500 },
-      );
-    }
-  } catch (error) {
-    console.error('Error deleting collection:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to delete collection',
-        details: error instanceof Error ? error.message : 'Unknown error',
+    // Check if collection exists and belongs to the user
+    const existingCollection = await db.collection.findUnique({
+      where: {
+        id,
       },
-      { status: 500 },
-    );
+    });
+    if (!existingCollection) {
+      throw new ApiNotFoundError('Collection not found');
+    }
+    if (existingCollection.userId !== session.user.address) {
+      throw new ApiAuthNotAllowed(
+        'User does not have permission to modify collection',
+      );
+    }
+
+    // First delete all campaign associations
+    await db.campaignCollection.deleteMany({
+      where: {
+        collectionId: id,
+      },
+    });
+
+    // Then delete the collection
+    await db.collection.delete({ where: { id } });
+
+    return response({ success: true });
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

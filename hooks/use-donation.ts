@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { ethers } from 'ethers';
-import { useWallet } from '@/hooks/use-wallet';
 import { useToast } from '@/hooks/use-toast';
+import { useWallet } from '@/lib/web3/hooks/use-web3';
 import { switchNetwork } from '@/lib/web3/switch-network';
 import { requestTransaction } from '@/lib/web3/request-transaction';
 import {
@@ -38,9 +38,9 @@ export function useDonationCallback({
       }
 
       debug && console.log('Getting wallet provider and signer...');
-      const privyProvider = await wallet.getEthereumProvider();
-      const walletProvider = new ethers.providers.Web3Provider(privyProvider);
-      const signer = walletProvider.getSigner();
+      const walletProvider = await wallet.getEthereumProvider();
+      const ethersProvider = new ethers.providers.Web3Provider(walletProvider);
+      const signer = ethersProvider.getSigner();
       const userAddress = await signer.getAddress();
       if (!userAddress || !ethers.utils.isAddress(userAddress)) {
         throw new Error('User address is missing or invalid');
@@ -66,7 +66,6 @@ export function useDonationCallback({
         campaignId: campaign.id,
         isAnonymous: false,
         status: 'confirming',
-        userAddress,
         transactionHash: tx.hash,
       });
 
@@ -81,7 +80,6 @@ export function useDonationCallback({
       await updatePaymentStatus({
         paymentId,
         status: receipt.status === 1 ? 'confirmed' : 'failed',
-        userAddress,
       });
 
       debug && console.log('Payment status updated');

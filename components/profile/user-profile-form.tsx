@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useAuth } from '@/contexts';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -77,7 +76,6 @@ interface UserProfileFormProps {
 }
 
 export function UserProfileForm({ profile, onSuccess }: UserProfileFormProps) {
-  const { address } = useAuth();
   const { toast } = useToast();
   const { mutateAsync: updateUserProfile, isPending } = useUpdateUserProfile();
 
@@ -99,7 +97,6 @@ export function UserProfileForm({ profile, onSuccess }: UserProfileFormProps) {
     async (data: ProfileFormValues) => {
       try {
         await updateUserProfile({
-          userAddress: address ?? '',
           firstName: data.firstName ?? '',
           lastName: data.lastName ?? '',
           username: data.uniqueUsername,
@@ -126,7 +123,7 @@ export function UserProfileForm({ profile, onSuccess }: UserProfileFormProps) {
         });
       }
     },
-    [updateUserProfile, address, toast, onSuccess],
+    [updateUserProfile, toast, onSuccess],
   );
 
   return (

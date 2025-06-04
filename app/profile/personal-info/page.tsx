@@ -9,24 +9,21 @@ import { PageHeader } from '@/components/page/header';
 import { PageDefaultContent } from '@/components/page/default-content';
 import { useCrowdsplitCustomer } from '@/lib/crowdsplit/hooks/useCrowdsplit';
 export default function PersonalInfoPage() {
-  const { isReady, address, authenticated } = useAuth();
-  const { data: customer, isPending } = useCrowdsplitCustomer({
-    userAddress: address ?? '',
-  });
-
-  if (!isReady || isPending) {
-    return (
-      <PageLoading>
-        Please wait while we fetch your profile information.
-      </PageLoading>
-    );
-  }
+  const { isReady, authenticated } = useAuth();
+  const { data: customer, isPending } = useCrowdsplitCustomer();
 
   if (!authenticated) {
     return (
       <PageConnectWallet>
         Please connect your wallet to access your profile
       </PageConnectWallet>
+    );
+  }
+  if (!isReady || isPending) {
+    return (
+      <PageLoading>
+        Please wait while we fetch your profile information.
+      </PageLoading>
     );
   }
 

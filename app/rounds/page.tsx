@@ -5,12 +5,12 @@ import RoundCard from '@/components/round-card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/server/db';
 import { Round } from '@/types/round';
 
 async function getRounds(): Promise<Round[]> {
   try {
-    const roundsData = await prisma.round.findMany({
+    const roundsData = await db.round.findMany({
       orderBy: {
         startDate: 'desc',
       },

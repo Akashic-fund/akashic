@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts';
 import { ethers } from 'ethers';
 import { GlobalParamsABI } from '@/contracts/abi/GlobalParams';
 import { TreasuryFactoryABI } from '@/contracts/abi/TreasuryFactory';
-import chainConfig from '@/config/chain';
+import chainConfig from '@/lib/web3/config/chain';
 import { enableBypassContractAdmin } from '@/lib/develop';
 
 // Add platform config

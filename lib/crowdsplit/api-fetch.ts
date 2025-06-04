@@ -53,8 +53,8 @@ export async function apiFetch(
                   owner_document_number: null,
                   owner_document_type: null,
                   customer_wallet: null,
-                  trading_wallet: null
-                }
+                  trading_wallet: null,
+                },
               }),
             );
           }
@@ -65,7 +65,10 @@ export async function apiFetch(
               }),
             );
           }
-          if (url.includes('/payment_methods/') && options.method === 'DELETE') {
+          if (
+            url.includes('/payment_methods/') &&
+            options.method === 'DELETE'
+          ) {
             return new Response(
               JSON.stringify({
                 id: 'mock-payment-method-id' + uuidv4(),
@@ -132,7 +135,7 @@ export async function apiFetch(
     }
     console.log('using original service');
   }
-  
+
   // In production/staging, always use real fetch
   return fetch(url, options);
 }

@@ -9,14 +9,14 @@ function getPrismaLogLevels(): Prisma.LogLevel[] {
   if (!logLevels) {
     return ['error'];
   }
-  
-  const levels = logLevels.split(',').map(level => level.trim());
-  
+
+  const levels = logLevels.split(',').map((level) => level.trim());
+
   const validLevels: Prisma.LogLevel[] = ['query', 'info', 'warn', 'error'];
-  const filteredLevels = levels.filter((level): level is Prisma.LogLevel => 
-    validLevels.includes(level as Prisma.LogLevel)
+  const filteredLevels = levels.filter((level): level is Prisma.LogLevel =>
+    validLevels.includes(level as Prisma.LogLevel),
   );
-  
+
   return filteredLevels.length > 0 ? filteredLevels : ['error'];
 }
 

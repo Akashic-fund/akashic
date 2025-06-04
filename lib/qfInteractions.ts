@@ -8,8 +8,8 @@ import {
 } from 'viem';
 // {type ReadContractParameters, encodeFunctionData, getContractAddress } from 'viem'
 // Import only necessary functions from @wagmi/core for reads if needed server-side,but primarily rely on client-side hooks for writes.
-import { readContract } from '@wagmi/core';
-import { config } from '@/config/wagmi';
+import { readContract, createConfig } from '@wagmi/core';
+import { config } from '@/lib/web3/config/wagmi';
 import { ALLO_ADDRESS, KICKSTARTER_QF_ADDRESS } from './constant';
 // import { type Chain } from 'wagmi/chains' // Import Chain type
 // import { deployContract } from 'wagmi/actions'
@@ -310,7 +310,7 @@ export async function checkErc20Allowance({
   );
   try {
     // chainId is not needed in readContract as wagmi handles chain management
-    const allowance = (await readContract(config, {
+    const allowance = (await readContract(createConfig(config), {
       address: tokenAddress,
       abi: erc20Abi,
       functionName: 'allowance',
@@ -342,7 +342,7 @@ export async function checkDirectTransferFlag({
   );
   try {
     // chainId is not needed in readContract as wagmi handles chain management
-    const isDirectTransfer = (await readContract(config, {
+    const isDirectTransfer = (await readContract(createConfig(config), {
       address: strategyAddress,
       abi: kickstarterQfAbi,
       functionName: 'directTransfers',

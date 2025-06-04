@@ -1,43 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/server/db';
+import { checkAuth } from '@/lib/api/auth';
+import { ApiNotFoundError, ApiUpstreamError } from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
+
 import { crowdsplitService } from '@/lib/crowdsplit/service';
-import { CrowdsplitKycInitiatePostRequest } from '@/lib/crowdsplit/api/types';
 
 // request a initiate-url for the KYC process, returns a url that the client needs to redirect to
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    const data: CrowdsplitKycInitiatePostRequest = await request.json();
-    const { userAddress } = data;
+    const session = await checkAuth(['user']);
 
-    if (!userAddress) {
-      return NextResponse.json(
-        {
-          error: 'Missing user address',
-        },
-        { status: 400, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
-
-    // Find user by crowdsplitCustomerId
-    const user = await prisma.user.findUnique({
-      where: { address: userAddress },
+    // Find user
+    const user = await db.user.findUnique({
+      where: { address: session.user.address },
     });
 
     if (!user) {
-      return NextResponse.json(
-        {
-          error: 'User not found',
-        },
-        { status: 404, headers: { 'Content-Type': 'application/json' } },
-      );
+      throw new ApiNotFoundError('User not found');
     }
     if (!user.crowdsplitCustomerId) {
-      return NextResponse.json(
-        {
-          error: 'User profile not found',
-        },
-        { status: 404, headers: { 'Content-Type': 'application/json' } },
-      );
+      throw new ApiNotFoundError('User Profile not found');
     }
 
     // Call the Crowdsplit API to initiate KYC
@@ -50,21 +32,16 @@ export async function POST(request: NextRequest) {
     const redirectUrl = kycData.redirect_url || kycData.redirectUrl;
 
     if (!redirectUrl) {
-      throw new Error('No redirect URL found in Crowdsplit API response');
+      throw new ApiUpstreamError(
+        'No redirect URL found in Crowdsplit API response',
+      );
     }
 
-    return NextResponse.json({
+    return response({
       success: true,
       redirectUrl,
     });
-  } catch (error) {
-    console.error('Error initiating KYC:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to initiate KYC',
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    );
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

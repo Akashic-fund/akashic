@@ -1,0 +1,2 @@
+-- CreateEnum
+CREATE TYPE "Status" AS ENUM ('NOT_STARTED', 'ACTIVE', 'CLOSED');

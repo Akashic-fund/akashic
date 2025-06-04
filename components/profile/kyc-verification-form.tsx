@@ -15,7 +15,6 @@ import { ProfileKYCVerificationStateComplete } from './kyc-verification-state-co
 import { ProfileKYCVerificationStatePending } from './kyc-verification-state-pending';
 import { ProfileKYCVerificationStateFailed } from './kyc-verification-state-failed';
 import { ProfileKYCVerificationStateDefault } from './kyc-verification-state-default';
-import { useAuth } from '@/contexts';
 import { useUserProfile } from '@/lib/hooks/useProfile';
 
 interface KycVerificationFormProps {
@@ -28,26 +27,16 @@ export function KycVerificationForm({
   onSuccess,
 }: KycVerificationFormProps) {
   const [kycUrl, setKycUrl] = useState<string | undefined>(undefined);
-  const { address } = useAuth();
-  const { isPending: isPendingProfile } = useUserProfile(address);
+  const { isPending: isPendingProfile } = useUserProfile();
   const { data: kycStatus, isPending: isKycStatusPending } =
-    useCrowdsplitKYCStatus({ userAddress: address ?? '' });
+    useCrowdsplitKYCStatus();
   const { mutateAsync: kycInitiate, isPending: isKycInitiatePending } =
-    useCrowdsplitKYCInitiate({ userAddress: address ?? '' });
+    useCrowdsplitKYCInitiate();
 
   const onInitiateKYC = useCallback(async () => {
-    if (!address) {
-      toast({
-        title: 'Error',
-        description: 'Wallet address is required to initiate KYC',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     try {
       console.log('Initiating KYC for customer:');
-      const { redirectUrl } = await kycInitiate();
+      const { redirectUrl } = await kycInitiate({});
 
       if (redirectUrl) {
         setKycUrl(redirectUrl);
@@ -72,7 +61,7 @@ export function KycVerificationForm({
       });
       // Optionally reset state if needed, e.g., setKycStatus('not_started')
     }
-  }, [address, kycInitiate]);
+  }, [kycInitiate]);
   useEffect(() => {
     if (isCompleted) {
       return;

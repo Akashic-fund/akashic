@@ -5,7 +5,7 @@ import { AKASHIC_NFT_REGISTRY } from '@/lib/constant';
 // import { CampaignNFTabi } from '@/contracts/nftABI/CampaignNFT';
 import { CampaignNFTFactory } from '@/contracts/nftABI/CampaignNFTFactory';
 // import { NFT_METADATA } from '@/lib/constant';
-import { chainConfig } from '@/config/chain';
+import { chainConfig } from '@/lib/web3/config/chain';
 
 export const getProvider = () => {
   // For browser environments

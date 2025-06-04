@@ -1,76 +1,64 @@
-import { prisma } from '@/lib/prisma';
-import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/server/db';
+import { checkAuth } from '@/lib/api/auth';
+import {
+  ApiAuthNotAllowed,
+  ApiNotFoundError,
+  ApiParameterError,
+} from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
 
 export async function GET() {
   try {
-    const rounds = await prisma.round.findMany(); // Fetch all rounds from the database
-    return NextResponse.json(rounds, {
-      status: 200,
-    }); // Return the rounds as JSON
-  } catch (error) {
-    console.error('Error fetching rounds: ', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch rounds' },
-      { status: 500 },
-    ); // Handle errors
-  } finally {
-    await prisma.$disconnect(); // Disconnect Prisma Client
+    const rounds = await db.round.findMany(); // Fetch all rounds from the database
+    return response(rounds);
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }
 
 // New POST handler
-export async function POST(req: NextRequest) {
-  let body;
+export async function POST(req: Request) {
   try {
-    body = await req.json(); // Parse the JSON body
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); // Handle invalid JSON
-  }
+    const session = await checkAuth(['user']);
+    const body = await req.json();
 
-  const {
-    title,
-    description,
-    tags,
-    matchingPool,
-    applicationStart,
-    applicationClose,
-    startDate,
-    endDate,
-    status,
-    blockchain,
-    logoUrl,
-  } = body;
+    const {
+      title,
+      description,
+      tags,
+      matchingPool,
+      applicationStart,
+      applicationClose,
+      startDate,
+      endDate,
+      status,
+      blockchain,
+      logoUrl,
+    } = body;
 
-  // Check if any required fields are missing
-  if (
-    !title ||
-    !description ||
-    !tags ||
-    !matchingPool ||
-    !applicationStart ||
-    !applicationClose ||
-    !startDate ||
-    !endDate ||
-    !blockchain ||
-    !logoUrl
-  ) {
-    return NextResponse.json(
-      { error: 'Missing required fields' },
-      { status: 400 },
-    );
-  }
+    // Check if any required fields are missing
+    if (
+      !title ||
+      !description ||
+      !tags ||
+      !matchingPool ||
+      !applicationStart ||
+      !applicationClose ||
+      !startDate ||
+      !endDate ||
+      !blockchain ||
+      !logoUrl
+    ) {
+      throw new ApiParameterError('Missing required parameters');
+    }
 
-  // Validate status against enum values
-  const validStatuses = ['NOT_STARTED', 'ACTIVE', 'CLOSED'];
-  if (status && !validStatuses.includes(status)) {
-    return NextResponse.json(
-      { error: 'Invalid status value' },
-      { status: 400 },
-    );
-  }
+    // Validate status against enum values
+    const validStatuses = ['NOT_STARTED', 'ACTIVE', 'CLOSED'];
+    if (status && !validStatuses.includes(status)) {
+      throw new ApiParameterError('Invalid status value');
+    }
 
-  try {
-    const newRound = await prisma.round.create({
+    const newRound = await db.round.create({
       data: {
         title: title,
         description: description,
@@ -84,27 +72,32 @@ export async function POST(req: NextRequest) {
         logoUrl,
         strategyAddress: body.strategyAddress || '0x0',
         profileId: body.profileId || 'default-profile',
-        managerAddress: body.managerAddress || '0x0',
+        managerAddress: session.user.address,
         tokenAddress: body.tokenAddress || '0x0',
         tokenDecimals: body.tokenDecimals || 18,
       },
     });
-    return NextResponse.json(newRound, { status: 201 });
-  } catch (error) {
-    console.error('Error creating round: ', (error as unknown as Error).stack);
-    return NextResponse.json(
-      { error: 'Failed to create round' },
-      { status: 500 },
-    );
+    return response(newRound);
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }
 
-export async function PUT(req: NextRequest) {
-  const { id, title, description, tags, matchingPool, startDate, endDate } =
-    await req.json();
-
+export async function PUT(req: Request) {
   try {
-    const updatedRound = await prisma.round.update({
+    const session = await checkAuth(['user']);
+    const { id, title, description, tags, matchingPool, startDate, endDate } =
+      await req.json();
+    const instance = await db.round.findUnique({ where: { id } });
+    if (!instance) {
+      throw new ApiNotFoundError('User not found');
+    }
+    if (instance.managerAddress !== session.user.address) {
+      throw new ApiAuthNotAllowed(
+        'Only the creator of the round may modify it',
+      );
+    }
+    const updatedRound = await db.round.update({
       where: { id },
       data: {
         title,
@@ -115,12 +108,8 @@ export async function PUT(req: NextRequest) {
         applicationClose: new Date(endDate),
       },
     });
-    return NextResponse.json(updatedRound, { status: 200 });
-  } catch (error) {
-    console.error('Error updating rounds: ', (error as unknown as Error).stack);
-    return NextResponse.json(
-      { error: 'Failed to update round' },
-      { status: 500 },
-    );
+    return response(updatedRound);
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

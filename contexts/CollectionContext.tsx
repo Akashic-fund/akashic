@@ -1,10 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import type { Collection } from '@/types';
-import type { Campaign } from '@/types/campaign';
-import { useAuth } from './AuthContext';
-import { toast } from '@/hooks/use-toast';
 import {
   useCreateCollection,
   useCreateItemInCollection,
@@ -117,29 +114,28 @@ export const useCollection = () => useContext(CollectionContext);
 export const CollectionProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const { address } = useAuth();
   const { data: featuredCollections } = useFeaturedCollections();
-  const { data: userCollections } = useUserCollections(address);
+  const { data: userCollections } = useUserCollections();
   const {
     mutateAsync: createCollection,
     isPending: createCollectionIsLoading,
-  } = useCreateCollection(address);
+  } = useCreateCollection();
   const {
     mutateAsync: createItemInCollection,
     isPending: createItemInCollectionIsLoading,
-  } = useCreateItemInCollection(address);
+  } = useCreateItemInCollection();
   const {
     mutateAsync: deleteItemFromCollection,
     isPending: deleteItemFromCollectionIsLoading,
-  } = useDeleteItemFromCollection(address);
+  } = useDeleteItemFromCollection();
   const {
     mutateAsync: deleteCollection,
     isPending: deleteCollectionIsLoading,
-  } = useDeleteCollection(address);
+  } = useDeleteCollection();
   const {
     mutateAsync: updateCollection,
     isPending: updateCollectionIsLoading,
-  } = useUpdateCollection(address);
+  } = useUpdateCollection();
   const isLoading: boolean =
     createCollectionIsLoading ||
     createItemInCollectionIsLoading ||

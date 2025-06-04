@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAccount } from '@/contexts';
+import { useAuth } from '@/contexts';
 import { type Address } from 'viem';
 import { Button } from '@/components/ui/button';
 import {
@@ -55,7 +55,7 @@ export function ApplyToRound({
 }: ApplyToRoundProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { address, isConnected } = useAccount();
+  const { address, authenticated } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -69,7 +69,7 @@ export function ApplyToRound({
   const isApplicationPeriodOver = !canApply;
 
   async function handleOpenDialog() {
-    if (!isConnected || !address) {
+    if (!authenticated) {
       toast({
         title: 'Connect wallet',
         description: 'Please connect your wallet to apply to this round',
@@ -82,7 +82,7 @@ export function ApplyToRound({
     setIsLoading(true);
 
     try {
-      const response = await fetch(`/api/campaigns/user?address=${address}`);
+      const response = await fetch(`/api/campaigns/user`);
       const data = await response.json();
 
       if (data.campaigns && Array.isArray(data.campaigns)) {

@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Favourite } from '@/types';
+import { useAuth } from '@/contexts';
 
 const FAVOURITE_QUERY_KEY = 'favourite';
 const FAVOURITE_CHECK_QUERY_KEY = 'favourite_check';
 
-async function fetchUserFavourites(address: string): Promise<Favourite[]> {
-  const response = await fetch(`/api/favorites/user?userAddress=${address}`);
+async function fetchUserFavourites(): Promise<Favourite[]> {
+  const response = await fetch(`/api/favorites/user`);
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to fetch user favourites');
@@ -13,13 +14,8 @@ async function fetchUserFavourites(address: string): Promise<Favourite[]> {
   const data = await response.json();
   return data.favorites;
 }
-async function checkUserFavourite(
-  address: string,
-  campaignId: number,
-): Promise<boolean> {
-  const response = await fetch(
-    `/api/favorites?userAddress=${address}&campaignId=${campaignId}`,
-  );
+async function checkUserFavourite(campaignId: number): Promise<boolean> {
+  const response = await fetch(`/api/favorites?campaignId=${campaignId}`);
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to fetch user favourites');
@@ -28,38 +24,33 @@ async function checkUserFavourite(
   return data.isFavorite ?? false;
 }
 
-export function useUserFavourites(address?: string | null) {
+export function useUserFavourites() {
+  const { authenticated } = useAuth();
   return useQuery({
-    queryKey: [FAVOURITE_QUERY_KEY, 'user', address],
-    queryFn: () => fetchUserFavourites(address!),
-    enabled: !!address,
+    queryKey: [FAVOURITE_QUERY_KEY, 'user'],
+    queryFn: fetchUserFavourites,
+    enabled: authenticated,
   });
 }
-export function useCheckUserFavourite(
-  address?: string | null,
-  campaignId?: number | null,
-) {
+export function useCheckUserFavourite(campaignId?: number | null) {
+  const { authenticated } = useAuth();
   return useQuery({
-    queryKey: [FAVOURITE_CHECK_QUERY_KEY, 'user', `${address}${campaignId}`],
-    queryFn: () => checkUserFavourite(address!, campaignId!),
-    enabled: !!address,
+    queryKey: [FAVOURITE_CHECK_QUERY_KEY, 'user', `${campaignId}`],
+    queryFn: () => checkUserFavourite(campaignId!),
+    enabled: authenticated,
   });
 }
 
-export function useUpdateFavourite(userAddress?: string) {
+export function useUpdateFavourite() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ campaignId }: { campaignId: number }) => {
-      if (!userAddress) {
-        throw new Error('Failed to update favourite');
-      }
       const response = await fetch('/api/favorites', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           campaignId,
-          userAddress,
         }),
       });
 

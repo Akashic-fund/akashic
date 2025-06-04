@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
-import { useAccount } from '@/contexts';
+import { useAuth } from '@/contexts';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,7 +16,7 @@ import { CampaignNFTabi } from '@/contracts/nftABI/CampaignNFT';
 import { parseEther } from 'viem';
 import { ethers } from 'ethers';
 import { Badge } from '@/components/ui/badge';
-import { chainConfig } from '@/config/chain';
+import { chainConfig } from '@/lib/web3/config/chain';
 
 interface CampaignDetailTabRewardsClientProps {
   campaignId: string;
@@ -47,7 +47,7 @@ export function CampaignDetailTabRewardsClient({
   campaignSlug,
   campaignOwner,
 }: CampaignDetailTabRewardsClientProps) {
-  const { address, isConnected } = useAccount();
+  const { address, authenticated } = useAuth();
   const [numbersProtocolUri, setNumbersProtocolUri] = useState<string | null>(
     null,
   );
@@ -92,7 +92,7 @@ export function CampaignDetailTabRewardsClient({
     campaignDefaultTokenURI: string;
   } | null>(null);
 
-  console.log(campaignId, campaignSlug, address, isConnected);
+  console.log(campaignId, campaignSlug, address, authenticated);
 
   const {
     writeContract,
@@ -586,7 +586,7 @@ export function CampaignDetailTabRewardsClient({
 
   return (
     <div className="space-y-6">
-      {!isConnected ? (
+      {!authenticated ? (
         <div className="rounded-lg bg-gray-50 p-6 text-center">
           <p className="mb-4">
             Connect your wallet to mint an NFT for this campaign

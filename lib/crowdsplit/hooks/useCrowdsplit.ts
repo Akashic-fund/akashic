@@ -1,74 +1,24 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  CrowdsplitCustomerGetRequest,
   CrowdsplitCustomerGetResponse,
   CrowdsplitCustomerPostRequest,
   CrowdsplitCustomerPostResponse,
   CrowdsplitKycInitiatePostRequest,
   CrowdsplitKycInitiatePostResponse,
-  CrowdsplitKycStatusGetRequest,
   CrowdsplitKycStatusGetResponse,
   CrowdsplitPaymentMethodDeleteRequest,
   CrowdsplitPaymentMethodDeleteResponse,
-  CrowdsplitPaymentMethodDetails,
-  CrowdsplitPaymentMethodsGetRequest,
   CrowdsplitPaymentMethodsGetResponse,
   CrowdsplitPaymentMethodsPostRequest,
   CrowdsplitPaymentMethodsPostResponse,
   CrowdsplitWalletAddressesPostRequest,
   CrowdsplitWalletAddressesPostResponse,
 } from '../api/types';
-
+import { useAuth } from '@/contexts';
 const CROWDSPLIT_QUERY_KEY = 'crowdsplit';
 
-interface ICrowdsplitUpdateCustomerHook {
-  userAddress: string;
-}
-interface ICrowdsplitUpdateCustomerRequestMutationApi {
-  firstName: string;
-  lastName: string;
-  email: string;
-  documentType: string;
-  documentNumber: string;
-  dob: string;
-  streetNumber: string;
-  streetName: string;
-  neighborhood?: string;
-  city: string;
-  state: string;
-  addressCountryId: number;
-  postalCode: string;
-  phoneCountryCode: string;
-  phoneAreaCode: string;
-  phoneNumber: string;
-}
-
-interface ICrowdsplitCreatePaymentMethodHook {
-  userAddress: string;
-}
-interface ICrowdsplitCreatePaymentMethodRequestMutationApi {
-  type: string;
-  provider: string;
-  bankDetails: CrowdsplitPaymentMethodDetails;
-}
-
-interface ICrowdsplitDeletePaymentMethodHook {
-  userAddress: string;
-}
-interface ICrowdsplitDeletePaymentMethodRequestMutationApi {
-  paymentMethodId: number;
-}
-interface ICrowdsplitUpdateWalletAddressHook {
-  userAddress: string;
-}
-interface ICrowdsplitUpdateWalletAddressMutationApi {
-  walletAddress: string;
-}
-
-async function fetchKYCStatus(variables: CrowdsplitKycStatusGetRequest) {
-  const response = await fetch(
-    `/api/crowdsplit/kyc/status?userAddress=${variables.userAddress}`,
-  );
+async function fetchKYCStatus() {
+  const response = await fetch(`/api/crowdsplit/kyc/status`);
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to fetch kyc status');
@@ -76,12 +26,8 @@ async function fetchKYCStatus(variables: CrowdsplitKycStatusGetRequest) {
   const data: CrowdsplitKycStatusGetResponse = await response.json();
   return data;
 }
-async function fetchPaymentMethods(
-  variables: CrowdsplitPaymentMethodsGetRequest,
-) {
-  const response = await fetch(
-    `/api/crowdsplit/payment-methods?userAddress=${variables.userAddress}`,
-  );
+async function fetchPaymentMethods() {
+  const response = await fetch(`/api/crowdsplit/payment-methods`);
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to fetch payment methods');
@@ -89,10 +35,8 @@ async function fetchPaymentMethods(
   const data: CrowdsplitPaymentMethodsGetResponse = await response.json();
   return data.paymentMethods;
 }
-async function fetchCustomer(variables: CrowdsplitCustomerGetRequest) {
-  const response = await fetch(
-    `/api/crowdsplit/customer?userAddress=${variables.userAddress}`,
-  );
+async function fetchCustomer() {
+  const response = await fetch(`/api/crowdsplit/customer`);
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to fetch customer');
@@ -106,9 +50,7 @@ async function initiateKYC(variables: CrowdsplitKycInitiatePostRequest) {
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      userAddress: variables.userAddress,
-    }),
+    body: JSON.stringify(variables),
   });
   if (!response.ok) {
     const error = await response.json();
@@ -153,7 +95,7 @@ async function deletePaymentMethod(
   variables: CrowdsplitPaymentMethodDeleteRequest,
 ) {
   const response = await fetch(
-    `/api/crowdsplit/payment-methods/${variables.paymentMethodId}?userAddress=${variables.userAddress}`,
+    `/api/crowdsplit/payment-methods/${variables.paymentMethodId}`,
     {
       method: 'DELETE',
       headers: {
@@ -191,39 +133,29 @@ async function updateWalletAddress(
 // read hooks
 //
 
-export function useCrowdsplitKYCStatus(
-  variables: CrowdsplitKycStatusGetRequest,
-) {
+export function useCrowdsplitKYCStatus() {
+  const { authenticated } = useAuth();
   return useQuery({
     queryKey: [CROWDSPLIT_QUERY_KEY, 'kyc-status'],
-    queryFn: async () => fetchKYCStatus(variables),
+    queryFn: fetchKYCStatus,
     refetchInterval: 30_000,
+    enabled: authenticated,
   });
 }
-export function useCrowdsplitPaymentMethods(
-  variables: CrowdsplitPaymentMethodsGetRequest,
-) {
+export function useCrowdsplitPaymentMethods() {
+  const { authenticated } = useAuth();
   return useQuery({
     queryKey: [CROWDSPLIT_QUERY_KEY, 'payment-methods'],
-    queryFn: async () => {
-      if (!variables.userAddress) {
-        throw new Error('Failed to fetch Payment-Methods, address missing');
-      }
-      return fetchPaymentMethods(variables);
-    },
-    enabled: !!variables.userAddress,
+    queryFn: fetchPaymentMethods,
+    enabled: authenticated,
   });
 }
-export function useCrowdsplitCustomer(variables: CrowdsplitCustomerGetRequest) {
+export function useCrowdsplitCustomer() {
+  const { authenticated } = useAuth();
   return useQuery({
     queryKey: [CROWDSPLIT_QUERY_KEY, 'customer'],
-    queryFn: async () => {
-      if (!variables.userAddress) {
-        throw new Error('Failed to fetch Customer, address missing');
-      }
-      return fetchCustomer(variables);
-    },
-    enabled: !!variables.userAddress,
+    queryFn: fetchCustomer,
+    enabled: authenticated,
   });
 }
 
@@ -231,13 +163,11 @@ export function useCrowdsplitCustomer(variables: CrowdsplitCustomerGetRequest) {
 // mutation hooks
 //
 
-export function useCrowdsplitKYCInitiate(
-  variables: CrowdsplitKycInitiatePostRequest,
-) {
+export function useCrowdsplitKYCInitiate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => initiateKYC(variables),
+    mutationFn: initiateKYC,
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [CROWDSPLIT_QUERY_KEY, 'kyc-status'],
@@ -245,19 +175,11 @@ export function useCrowdsplitKYCInitiate(
     },
   });
 }
-export function useCrowdsplitUpdateCustomer({
-  userAddress,
-}: ICrowdsplitUpdateCustomerHook) {
+export function useCrowdsplitUpdateCustomer() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (
-      variables: ICrowdsplitUpdateCustomerRequestMutationApi,
-    ) =>
-      updateCustomer({
-        ...variables,
-        userAddress,
-      }),
+    mutationFn: updateCustomer,
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [CROWDSPLIT_QUERY_KEY, 'customer'],
@@ -265,19 +187,11 @@ export function useCrowdsplitUpdateCustomer({
     },
   });
 }
-export function useCrowdsplitCreatePaymentMethod({
-  userAddress,
-}: ICrowdsplitCreatePaymentMethodHook) {
+export function useCrowdsplitCreatePaymentMethod() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (
-      variables: ICrowdsplitCreatePaymentMethodRequestMutationApi,
-    ) =>
-      createPaymentMethod({
-        ...variables,
-        userAddress: userAddress ?? '',
-      }),
+    mutationFn: createPaymentMethod,
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [CROWDSPLIT_QUERY_KEY, 'payment-methods'],
@@ -285,19 +199,11 @@ export function useCrowdsplitCreatePaymentMethod({
     },
   });
 }
-export function useCrowdsplitDeletePaymentMethod({
-  userAddress,
-}: ICrowdsplitDeletePaymentMethodHook) {
+export function useCrowdsplitDeletePaymentMethod() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (
-      variables: ICrowdsplitDeletePaymentMethodRequestMutationApi,
-    ) =>
-      deletePaymentMethod({
-        ...variables,
-        userAddress: userAddress ?? '',
-      }),
+    mutationFn: deletePaymentMethod,
     onError: () => {
       queryClient.invalidateQueries({
         queryKey: [CROWDSPLIT_QUERY_KEY, 'payment-methods'],
@@ -310,17 +216,11 @@ export function useCrowdsplitDeletePaymentMethod({
     },
   });
 }
-export function useCrowdsplitUpdateWalletAddress({
-  userAddress,
-}: ICrowdsplitUpdateWalletAddressHook) {
+export function useCrowdsplitUpdateWalletAddress() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (variables: ICrowdsplitUpdateWalletAddressMutationApi) =>
-      updateWalletAddress({
-        ...variables,
-        userAddress,
-      }),
+    mutationFn: updateWalletAddress,
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['profile'],

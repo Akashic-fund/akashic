@@ -10,7 +10,6 @@ interface ICreatePaymentApi {
   status: string;
   transactionHash: string;
   isAnonymous: boolean;
-  userAddress: string;
 }
 async function createPayment(variables: ICreatePaymentApi): Promise<Payment> {
   const response = await fetch(`/api/payments`, {
@@ -29,7 +28,6 @@ async function createPayment(variables: ICreatePaymentApi): Promise<Payment> {
 interface IUpdatePaymentStatusApi {
   paymentId: number;
   status: string;
-  userAddress: string;
 }
 async function updatePaymentStatus(variables: IUpdatePaymentStatusApi) {
   const response = await fetch(`/api/payments`, {

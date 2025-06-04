@@ -1,7 +1,11 @@
-import { PrismaClient } from '@/.generated/prisma/client';
+import { PrismaClient } from '../.generated/prisma/client';
 import { CampaignStatus } from '../types/campaign';
-const prisma = new PrismaClient();
+import shortUUID from 'short-uuid';
+import crypto from 'crypto';
 
+const db = new PrismaClient({
+  log: ['error'],
+});
 const campaignAddresses = [
   '0x8A7B9a472F45382A6B4bC0d20625a69FF84A12bf',
   '0x3e4893F8667CacFD3A241Bec0A10C080041e44F6',
@@ -83,24 +87,52 @@ const locations = [
 const campaignStatuses = Object.values(CampaignStatus);
 
 // Helper function to generate slug from title
-function generateSlug(
-  title: string,
-  index: number,
-  usedSlugs: Set<string>,
-): string {
-  let baseSlug = title
+function generateSlug(title: string): string {
+  const baseSlug = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 16); // Use more characters for better uniqueness
-  let slug = baseSlug;
-  let counter = 1;
-  while (usedSlugs.has(slug)) {
-    slug = `${baseSlug}-${index}`;
-    counter++;
-  }
-  usedSlugs.add(slug);
+  const slug = `${baseSlug}-${shortUUID().generate()}`;
   return slug;
+}
+function selectRandom<T>(array: T[]): T {
+  if (array.length === 0) {
+    throw new Error('to use selectRandom, provide a list of values');
+  }
+  const randomIndex = Math.floor(Math.random() * array.length);
+  return array[randomIndex];
+}
+function randomHash(): string {
+  const array = new Uint8Array(32); // 32 bytes for a 256-bit hash
+  crypto.getRandomValues(array); // Fill the array with cryptographically secure random values
+  return (
+    '0x' +
+    Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('')
+  ); // Convert to hex string
+}
+function randomAddress(): string {
+  // Generate a random 40-character hexadecimal string
+  const randomHexString = Array.from({ length: 40 }, () =>
+    Math.floor(Math.random() * 16).toString(16),
+  ).join('');
+
+  // Prefix with '0x' to resemble an Ethereum address
+  return '0x' + randomHexString;
+}
+async function createUsers(amount: number, roles: string[]) {
+  const userPromises = [];
+  for (let i = 0; i < 100; i++) {
+    userPromises.push(
+      db.user.create({
+        data: {
+          address: randomAddress(),
+          roles,
+        },
+      }),
+    );
+  }
+  return await Promise.all(userPromises);
 }
 
 async function main() {
@@ -118,7 +150,6 @@ async function main() {
     'c3.png',
   ];
 
-  const usedSlugs = new Set<string>();
   const campaigns = Array.from({ length: 10 }, (_, i) => ({
     title: campaignTitles[i],
     description: `Description for campaign ${i + 1}`,
@@ -127,27 +158,51 @@ async function main() {
     endTime: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     creatorAddress: '0x1234567890123456789012345678901234567890',
     status: campaignStatuses[i % campaignStatuses.length],
-    slug: generateSlug(campaignTitles[i], i, usedSlugs),
+    slug: generateSlug(campaignTitles[i]),
     transactionHash: `0xdeadbeef${(i + 1).toString().padStart(2, '0')}`,
     campaignAddress: campaignAddresses[i] || null,
     treasuryAddress: campaignAddresses[i] || null,
     category: campaignCategories[i % campaignCategories.length].id,
     location: locations[i % locations.length],
   }));
-
+  await db.campaignImage.deleteMany();
+  await db.campaignCollection.deleteMany();
+  await db.payment.deleteMany();
+  await db.campaign.deleteMany();
+  const donorUsers = await createUsers(100, ['user']);
   for (let i = 0; i < campaigns.length; i++) {
-    const campaign = await prisma.campaign.create({
+    const campaign = await db.campaign.create({
       data: campaigns[i],
     });
     // Assign an image from the local file system
     const imageFile = imageFiles[i % imageFiles.length];
-    await prisma.campaignImage.create({
+    await db.campaignImage.create({
       data: {
         imageUrl: `/campaign-images/${imageFile}`,
         isMainImage: true,
         campaignId: campaign.id,
       },
     });
+    for (let i = 0; i < 100; i++) {
+      await db.payment.create({
+        data: {
+          amount: `${Math.random() * 100}`,
+          token: selectRandom(['USDC', 'ETH', 'CELLO']),
+          status: selectRandom([
+            'pending',
+            'confirmed',
+            'confirming',
+            'failed',
+          ]),
+          type: 'BUY',
+          transactionHash: randomHash(),
+          campaign: { connect: { id: campaign.id } },
+          user: {
+            connect: { id: selectRandom(donorUsers.map(({ id }) => id)) },
+          },
+        },
+      });
+    }
   }
 
   console.log(`Seeded ${campaigns.length} campaigns with images`);
@@ -159,5 +214,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await db.$disconnect();
   });

@@ -1,9 +1,9 @@
+import { useAuth } from '@/contexts';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const PROFILE_QUERY_KEY = 'profile';
 
 interface IUpdateUserProfileApi {
-  userAddress: string;
   firstName: string;
   lastName: string;
   username: string;
@@ -43,8 +43,8 @@ async function updateUserProfile(
   const data = await response.json();
   return data.user;
 }
-async function fetchUserProfile(address: string): Promise<IUserProfileApi> {
-  const response = await fetch(`/api/users/me?userAddress=${address}`);
+async function fetchUserProfile(): Promise<IUserProfileApi> {
+  const response = await fetch(`/api/users/me`);
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to fetch user profile');
@@ -53,11 +53,12 @@ async function fetchUserProfile(address: string): Promise<IUserProfileApi> {
   return data;
 }
 
-export function useUserProfile(address?: string | null) {
+export function useUserProfile() {
+  const { authenticated } = useAuth();
   return useQuery({
     queryKey: [PROFILE_QUERY_KEY],
-    queryFn: () => fetchUserProfile(address!),
-    enabled: !!address,
+    queryFn: fetchUserProfile,
+    enabled: authenticated,
   });
 }
 

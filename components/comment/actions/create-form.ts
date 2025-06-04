@@ -1,4 +1,5 @@
 'use server';
+import { checkAuth } from '@/lib/api/auth';
 import { db } from '@/server/db';
 import { CampaignDisplay } from '@/types/campaign';
 import { revalidatePath } from 'next/cache';
@@ -6,20 +7,16 @@ import { revalidatePath } from 'next/cache';
 export async function commentCreateFormAction(
   campaign: CampaignDisplay,
   formData: FormData,
-  userAddress: string,
 ) {
-  const content = formData.get('content') as string;
+  const session = await checkAuth(['user']);
 
-  // Double check wallet connection on server side
-  if (!userAddress) {
-    throw new Error('Please connect your wallet to comment');
-  }
+  const content = formData.get('content') as string;
 
   try {
     const comment = await db.comment.create({
       data: {
         content,
-        userAddress,
+        userAddress: session.user.address,
         campaignId: campaign.id,
       },
     });

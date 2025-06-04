@@ -76,13 +76,11 @@ export function PersonalInfoForm({
   customerId,
   onSuccess,
 }: PersonalInfoFormProps) {
-  const { address, isReady } = useAuth();
+  const { authenticated, isReady } = useAuth();
   const { data: profile } = useUserProfile();
   const router = useRouter();
   const { mutateAsync: updateCustomer, isPending } =
-    useCrowdsplitUpdateCustomer({
-      userAddress: address ?? '',
-    });
+    useCrowdsplitUpdateCustomer();
   const form = useForm<PersonalInfoFormValues>({
     resolver: zodResolver(personalInfoSchema),
     defaultValues: {
@@ -106,7 +104,7 @@ export function PersonalInfoForm({
   });
   const onSubmit = useCallback(
     async (data: PersonalInfoFormValues) => {
-      if (!address || !isReady) {
+      if (!authenticated || !isReady) {
         toast({
           title: 'Error',
           description: 'Please connect your wallet first',
@@ -133,7 +131,7 @@ export function PersonalInfoForm({
         });
       }
     },
-    [isReady, address, updateCustomer, onSuccess, router],
+    [isReady, authenticated, updateCustomer, onSuccess, router],
   );
 
   const onDeveloperSubmit = useCallback(async () => {

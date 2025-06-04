@@ -1,31 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/server/db';
+import { checkAuth } from '@/lib/api/auth';
+import { ApiNotFoundError } from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const userAddress = request.nextUrl.searchParams.get('userAddress');
+    const session = await checkAuth(['user']);
 
-    if (!userAddress) {
-      return NextResponse.json(
-        { error: 'User address is required' },
-        { status: 400 },
-      );
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { address: userAddress },
+    const user = await db.user.findUnique({
+      where: { address: session.user.address },
     });
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      throw new ApiNotFoundError('User not found');
     }
-
-    return NextResponse.json(user);
-  } catch (error) {
-    console.error('Error fetching user:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch user data' },
-      { status: 500 },
-    );
+    return response(user);
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

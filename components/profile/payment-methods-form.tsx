@@ -12,7 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 
 import { PaymentMethod } from '@/types/payment';
 import { useCrowdsplitDeletePaymentMethod } from '@/lib/crowdsplit/hooks/useCrowdsplit';
-import { useAuth } from '@/contexts';
 import { ProfileAddPaymentMethodDialog } from './add-payment-method-dialog';
 import { ProfilePaymentMethodsTable } from './payment-methods-table';
 
@@ -27,27 +26,14 @@ export function PaymentMethodsForm({
 }: PaymentMethodsFormProps) {
   const { toast } = useToast();
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const { address } = useAuth();
 
-  const { mutateAsync: deletePaymentMethod } = useCrowdsplitDeletePaymentMethod(
-    {
-      userAddress: address ?? '',
-    },
-  );
+  const { mutateAsync: deletePaymentMethod } =
+    useCrowdsplitDeletePaymentMethod();
   const onCreateNewPaymentMethod = useCallback(() => {
     setShowAddDialog(true);
   }, [setShowAddDialog]);
   const onDeletePaymentMethod = useCallback(
     async (paymentMethodId: number) => {
-      if (!address) {
-        toast({
-          title: 'Error',
-          description: 'Please connect your wallet first',
-          variant: 'destructive',
-        });
-        throw new Error('invalid wallet');
-      }
-
       try {
         await deletePaymentMethod({ paymentMethodId });
         if (typeof onSuccess === 'function') {
@@ -70,7 +56,7 @@ export function PaymentMethodsForm({
         throw error;
       }
     },
-    [toast, deletePaymentMethod, address, onSuccess],
+    [toast, deletePaymentMethod, onSuccess],
   );
 
   return (

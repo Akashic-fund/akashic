@@ -23,10 +23,10 @@ export function CampaignCardDashboard({
   };
 
   const getCampaignStatus = (campaign: Campaign) => {
-    if (campaign.status === 'draft') return 'Draft';
-    if (campaign.status === 'pending_approval') return 'Pending Approval';
-    if (campaign.status === 'failed') return 'Failed';
-    if (campaign.status === 'completed') return 'Completed';
+    if (campaign.status === 'DRAFT') return 'Draft';
+    if (campaign.status === 'PENDING_APPROVAL') return 'Pending Approval';
+    if (campaign.status === 'FAILED') return 'Failed';
+    if (campaign.status === 'COMPLETED') return 'Completed';
 
     const now = Math.floor(Date.now() / 1000);
     const launchTime = campaign.launchTime

@@ -1,36 +1,38 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from './ui/button';
-import { Card, CardContent } from './ui/card';
 import {
+  Button,
+  Card,
+  CardContent,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from './ui/select';
-import { Badge } from './ui/badge';
-import { Switch } from './ui/switch';
-import { Input } from './ui/input';
-import { Checkbox } from './ui/checkbox';
-import { ErrorAlert } from '@/components/error-alert';
-import { Wallet, HelpCircle, CreditCard } from 'lucide-react';
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from './ui/tooltip';
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  SelectValue,
+  Badge,
+  Switch,
+  Input,
+  Checkbox,
+} from '@/components/ui';
+import { ErrorAlert } from '@/components/error-alert';
+import { Wallet, HelpCircle, CreditCard } from 'lucide-react';
 import { Campaign } from '@/types/campaign';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Elements } from '@stripe/react-stripe-js';
 import { PaymentStripeForm } from '@/components/payment/stripe-form';
+import { PaymentSwitchWalletNetwork } from '@/components/payment/switch-wallet-network';
 import { useStripePaymentCallback } from '@/hooks/use-stripe';
 import { useNetworkCheck } from '@/hooks/use-network';
 import { useDonationCallback } from '@/hooks/use-donation';
-import { useUsdcBalance } from '@/hooks/use-usdc-balance';
-import { PaymentSwitchWalletNetwork } from './payment/switch-wallet-network';
+import { useUsdcBalance } from '@/lib/web3/hooks/use-usdc-balance';
 import { useAuth } from '@/contexts';
 
 interface DonationFormProps {

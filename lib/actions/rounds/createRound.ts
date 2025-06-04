@@ -2,10 +2,9 @@
 
 import { z } from 'zod';
 import { type Address, type Hash } from 'viem';
-import { PrismaClient, Prisma } from '@/.generated/prisma/client';
+import { db, PrismaClientKnownRequestError } from '@/server/db';
 import { type ActionResponse } from '@/types/actions';
-
-const prisma = new PrismaClient();
+import { checkAuth } from '@/lib/api/auth';
 
 // Schema for the data coming *from the form*
 const roundFormSchema = z.object({
@@ -51,11 +50,6 @@ const saveRoundActionSchema = roundFormSchema.extend({
     .refine((val): val is Hash => /^0x[a-fA-F0-9]{64}$/.test(val), {
       message: 'Invalid Transaction Hash format.',
     }),
-  managerAddress: z
-    .string()
-    .refine((val): val is Address => /^0x[a-fA-F0-9]{40}$/.test(val), {
-      message: 'Invalid manager address format.',
-    }),
   strategyAddress: z
     .string()
     .refine((val): val is Address => /^0x[a-fA-F0-9]{40}$/.test(val), {
@@ -77,6 +71,7 @@ export async function saveRoundAction(
   input: SaveRoundActionInput,
 ): Promise<SaveRoundActionResult> {
   try {
+    const session = await checkAuth(['admin']);
     const validationResult = saveRoundActionSchema.safeParse(input);
     if (!validationResult.success) {
       console.error(
@@ -101,7 +96,7 @@ export async function saveRoundAction(
       poolId: data.poolId,
       strategyAddress: data.strategyAddress,
       profileId: data.profileId,
-      managerAddress: data.managerAddress,
+      managerAddress: session.user.address,
       transactionHash: data.transactionHash,
       title: data.title,
       description: data.description,
@@ -119,7 +114,7 @@ export async function saveRoundAction(
     };
 
     // Use Prisma to create the round record
-    const newRound = await prisma.round.create({
+    const newRound = await db.round.create({
       data: prismaData,
     });
 
@@ -137,7 +132,7 @@ export async function saveRoundAction(
       error instanceof Error ? error.message : String(error),
     );
 
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error instanceof PrismaClientKnownRequestError) {
       if (error.code === 'P2002') {
         const target = (error.meta as { target?: string[] | string })?.target;
         const targetString = Array.isArray(target) ? target.join(', ') : target;
@@ -161,14 +156,5 @@ export async function saveRoundAction(
       success: false,
       error: errorMessage,
     };
-  } finally {
-    await prisma.$disconnect().catch((disconnectError) => {
-      console.error(
-        'Error disconnecting Prisma client:',
-        disconnectError instanceof Error
-          ? disconnectError.message
-          : String(disconnectError),
-      );
-    });
   }
 }

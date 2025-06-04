@@ -1,21 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/server/db';
+import { ApiIntegrityError } from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
+
 import { crowdsplitService } from '@/lib/crowdsplit/service';
 import { CrowdsplitWebhookKycPostRequest } from '@/lib/crowdsplit/api/types';
 
 // This webhook should be registered with Crowdsplit to receive KYC status updates
 
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
     // Get the raw request body for signature verification
-    const rawBody = await request.text();
+    const rawBody = await req.text();
     const body: CrowdsplitWebhookKycPostRequest = JSON.parse(rawBody);
 
     // In production, verify the webhook signature from Crowdsplit
     // This is a security best practice to ensure the webhook is actually from Crowdsplit
-    const signature = request.headers.get('crowdsplit-signature');
+    const signature = req.headers.get('crowdsplit-signature');
     if (crowdsplitService.verifySignature(signature, rawBody)) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      throw new ApiIntegrityError('Invalid signature');
     }
 
     // Process the webhook based on the event type
@@ -25,10 +27,7 @@ export async function POST(request: NextRequest) {
       const { customer_id: customerId, status } = data;
 
       if (!customerId) {
-        return NextResponse.json(
-          { error: 'Missing customer ID' },
-          { status: 400 },
-        );
+        throw new ApiIntegrityError('Missing customer ID');
       }
 
       console.log(
@@ -40,7 +39,7 @@ export async function POST(request: NextRequest) {
 
       // Update user KYC status if completed
       if (status === 'completed') {
-        await prisma.user.updateMany({
+        await db.user.updateMany({
           where: { crowdsplitCustomerId: customerId },
           data: { isKycCompleted: true },
         });
@@ -48,15 +47,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Always return 200 to acknowledge receipt of the webhook
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error processing KYC webhook:', error);
-    // Still return 200 to avoid Crowdsplit retrying the webhook unnecessarily
-    // You would handle the error internally (e.g., log it for investigation)
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to process webhook',
-      details: error instanceof Error ? error.message : String(error),
-    });
+    return response({ success: true });
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

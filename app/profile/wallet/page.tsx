@@ -12,25 +12,24 @@ import { PageConnectWallet } from '@/components/page/connect-wallet';
 import { ProfileNotComplete } from '@/components/profile/not-complete';
 
 export default function WalletSettingsPage() {
-  const { address, authenticated, isReady } = useAuth();
-  const { data: profile, isPending: isProfilePending } =
-    useUserProfile(address);
+  const { authenticated, isReady } = useAuth();
+  const { data: profile, isPending: isProfilePending } = useUserProfile();
   const customerId = useMemo(
     () => profile?.crowdsplitCustomerId ?? null,
     [profile],
   );
-  if (!isReady || isProfilePending) {
-    return (
-      <PageLoading>
-        Please wait while we fetch your wallet information.
-      </PageLoading>
-    );
-  }
   if (!authenticated) {
     return (
       <PageConnectWallet>
         Please connect your wallet to access KYC verification
       </PageConnectWallet>
+    );
+  }
+  if (!isReady || isProfilePending) {
+    return (
+      <PageLoading>
+        Please wait while we fetch your wallet information.
+      </PageLoading>
     );
   }
 

@@ -1,33 +1,18 @@
 'use client';
 
-import { PrivyProvider } from '@privy-io/react-auth';
-import { ReactNode } from 'react';
-import { WagmiProvider } from '@privy-io/wagmi';
-import { celoAlfajores, sepolia, mainnet } from '@/config/wagmi';
+import { Suspense, type ReactNode } from 'react';
+
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { CollectionProvider } from '@/contexts/CollectionContext';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { createConfig } from '@privy-io/wagmi';
-import { http } from 'wagmi';
-import { chainConfig } from '@/config/chain';
+import { SessionProvider } from 'next-auth/react';
+import { Web3ContextProvider } from '@/lib/web3/context-provider';
 import {
-  AccountProvider,
   AuthProvider,
   SidebarProvider,
   FeatureFlagsProvider,
   EnvironmentProvider,
+  CollectionProvider,
 } from '@/contexts';
-
-// Create Privy-specific wagmi config
-const privyWagmiConfig = createConfig({
-  chains: [celoAlfajores, sepolia, mainnet],
-  transports: {
-    [celoAlfajores.id]: http(chainConfig.rpcUrl),
-    [sepolia.id]: http(),
-    [mainnet.id]: http(),
-  },
-  ssr: true,
-});
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,48 +27,23 @@ const queryClient = new QueryClient({
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
-    <PrivyProvider
-      appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''}
-      config={{
-        appearance: {
-          accentColor: '#44d29b',
-          theme: '#FFFFFF',
-          showWalletLoginFirst: false,
-          logo: 'https://auth.privy.io/logos/privy-logo.png',
-          walletChainType: 'ethereum-only',
-        },
-        loginMethods: ['email', 'wallet', 'google', 'github'],
-        fundingMethodConfig: {
-          moonpay: {
-            useSandbox: true,
-          },
-        },
-        defaultChain: chainConfig.defaultChain,
-        embeddedWallets: {
-          createOnLogin: 'users-without-wallets',
-          requireUserPasswordOnCreate: false,
-        },
-        mfa: {
-          noPromptOnMfaRequired: false,
-        },
-      }}
-    >
+    <SessionProvider>
       <QueryClientProvider client={queryClient}>
-        <WagmiProvider config={privyWagmiConfig}>
+        <Web3ContextProvider>
           <FeatureFlagsProvider>
             <SidebarProvider>
               <EnvironmentProvider>
-                <AccountProvider>
+                <Suspense>
                   <AuthProvider>
                     <CollectionProvider>{children}</CollectionProvider>
                   </AuthProvider>
-                </AccountProvider>
+                </Suspense>
               </EnvironmentProvider>
             </SidebarProvider>
           </FeatureFlagsProvider>
-        </WagmiProvider>
-        <ReactQueryDevtools initialIsOpen={false} />
+          <ReactQueryDevtools initialIsOpen={false} />
+        </Web3ContextProvider>
       </QueryClientProvider>
-    </PrivyProvider>
+    </SessionProvider>
   );
 }

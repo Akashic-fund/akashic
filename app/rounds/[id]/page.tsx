@@ -14,8 +14,7 @@ import {
 } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApplyToRound } from '@/components/apply-to-round';
-import { prisma } from '@/lib/prisma';
-import { Decimal } from '@prisma/client/runtime/library';
+import { db, type Decimal } from '@/server/db';
 import { ROUND_STATUS_MAP, getRoundStatus } from '@/types/round';
 import { CheckWalletServer } from '@/components/check-wallet-server';
 
@@ -56,7 +55,7 @@ async function getRoundData(id: string): Promise<RoundWithCampaigns | null> {
   }
 
   try {
-    const round = await prisma.round.findUnique({
+    const round = await db.round.findUnique({
       where: { id: roundId },
       include: {
         roundCampaigns: {

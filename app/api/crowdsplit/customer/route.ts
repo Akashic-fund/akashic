@@ -1,125 +1,63 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/server/db';
+import { checkAuth } from '@/lib/api/auth';
+import { ApiNotFoundError, ApiUpstreamError } from '@/lib/api/error';
+import { response, handleError } from '@/lib/api/response';
+
 import { crowdsplitService } from '@/lib/crowdsplit/service';
 import { CrowdsplitCustomerPostRequest } from '@/lib/crowdsplit/api/types';
 
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const data: CrowdsplitCustomerPostRequest = await request.json();
-    const { userAddress, ...customerData } = data;
+    const session = await checkAuth(['user']);
+    const customerData: CrowdsplitCustomerPostRequest = await req.json();
 
-    if (!userAddress) {
-      return NextResponse.json(
-        { error: 'Missing user address' },
-        { status: 400 },
-      );
+    // Call Crowdsplit API to create customer
+    const crowdsplitCustomer =
+      await crowdsplitService.createCustomer(customerData);
+
+    if (typeof crowdsplitCustomer.id !== 'string') {
+      throw new ApiUpstreamError('Crowdsplit API Error');
     }
-
-    // Find user by address
-    const user = await prisma.user.findUnique({
-      where: { address: userAddress },
+    // Update user with Crowdsplit customer ID
+    await db.user.update({
+      where: { address: session.user.address },
+      data: {
+        crowdsplitCustomerId: crowdsplitCustomer.id,
+        firstName: customerData.firstName,
+        lastName: customerData.lastName,
+        email: customerData.email,
+      },
     });
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    try {
-      // Call Crowdsplit API to create customer
-      const crowdsplitCustomer =
-        await crowdsplitService.createCustomer(customerData);
-
-      // Access the customer ID from the nested data structure
-      const customerId = crowdsplitCustomer.data?.id;
-
-      if (typeof customerId !== 'string') {
-        console.error('Expected string id, got:', {
-          id: customerId,
-          type: typeof customerId,
-          fullResponse: crowdsplitCustomer,
-        });
-        return NextResponse.json(
-          { error: 'Crowdsplit API Error', details: 'Invalid customer ID format' },
-          { status: 400 },
-        );
-      }
-      // Update user with Crowdsplit customer ID
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          crowdsplitCustomerId: customerId,
-          firstName: customerData.firstName,
-          lastName: customerData.lastName,
-          email: customerData.email,
-        },
-      });
-
-      return NextResponse.json({
-        success: true,
-        customerId,
-      });
-    } catch (crowdsplitError) {
-      console.error('Crowdsplit API error:', crowdsplitError);
-      return NextResponse.json(
-        {
-          error: 'Failed to create Crowdsplit customer',
-          details:
-            crowdsplitError instanceof Error
-              ? crowdsplitError.message
-              : String(crowdsplitError),
-        },
-        { status: 500 },
-      );
-    }
-  } catch (error) {
-    console.error('Error creating Crowdsplit customer:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to process request',
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    );
+    return response({
+      success: true,
+      customerId: crowdsplitCustomer.id,
+    });
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const userAddress = request.nextUrl.searchParams.get('userAddress');
-
-    if (!userAddress) {
-      return NextResponse.json(
-        { error: 'Missing user address' },
-        { status: 400 },
-      );
-    }
+    const session = await checkAuth(['user']);
 
     // Find user by address
-    const user = await prisma.user.findUnique({
-      where: { address: userAddress },
+    const user = await db.user.findUnique({
+      where: { address: session.user.address },
     });
 
     if (!user) {
-      return NextResponse.json({
-        hasCustomer: false,
-        message: 'User not found',
-      });
+      throw new ApiNotFoundError('User not found');
     }
 
     // No need to fetch from Crowdsplit API - use local data
-    return NextResponse.json({
+    return response({
       hasCustomer: !!user.crowdsplitCustomerId,
       customerId: user.crowdsplitCustomerId,
       isKycCompleted: user.isKycCompleted,
     });
-  } catch (error) {
-    console.error('Error fetching Crowdsplit customer:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to fetch customer information',
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    );
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

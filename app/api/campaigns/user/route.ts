@@ -1,51 +1,21 @@
+import { db } from '@/server/db';
+import { checkAuth } from '@/lib/api/auth';
+import { response, handleError } from '@/lib/api/response';
+
 import { createPublicClient, http } from 'viem';
 import { celoAlfajores } from 'viem/chains';
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { chainConfig } from '@/config/chain';
-import { CampaignStatus } from '@/types/campaign';
+import { chainConfig } from '@/lib/web3/config/chain';
 
 const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_CAMPAIGN_INFO_FACTORY;
 const RPC_URL = chainConfig.rpcUrl;
 
-type DbCampaign = {
-  id: number;
-  description: string;
-  title: string;
-  fundingGoal: string;
-  startTime: Date;
-  endTime: Date;
-  creatorAddress: string;
-  status: string;
-  transactionHash: string | null;
-  campaignAddress: string | null;
-  treasuryAddress: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  images: {
-    id: number;
-    imageUrl: string;
-    isMainImage: boolean;
-    campaignId: number;
-  }[];
-};
-
-export async function GET(request: Request) {
+export async function GET() {
   try {
     if (!FACTORY_ADDRESS || !RPC_URL) {
       throw new Error('Campaign factory address or RPC URL not configured');
     }
 
-    const { searchParams } = new URL(request.url);
-    const creatorAddress = searchParams.get('address');
-    console.log('Creator address:', creatorAddress);
-
-    if (!creatorAddress) {
-      return NextResponse.json(
-        { error: 'Wallet address is required' },
-        { status: 400 },
-      );
-    }
+    const session = await checkAuth(['user']);
 
     const client = createPublicClient({
       chain: celoAlfajores,
@@ -53,9 +23,9 @@ export async function GET(request: Request) {
     });
 
     // First, fetch all campaigns from the database
-    const dbCampaigns = await prisma.campaign.findMany({
+    const dbCampaigns = await db.campaign.findMany({
       where: {
-        creatorAddress,
+        creatorAddress: session.user.address,
       },
       select: {
         id: true,
@@ -96,7 +66,7 @@ export async function GET(request: Request) {
     });
 
     // Combine data from events and database
-    const combinedCampaigns = dbCampaigns.map((dbCampaign: DbCampaign) => {
+    const combinedCampaigns = dbCampaigns.map((dbCampaign) => {
       // For campaigns without transaction hash (draft, etc), use database values
       if (!dbCampaign.transactionHash) {
         return {
@@ -165,61 +135,8 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json({ campaigns: combinedCampaigns });
-  } catch (error) {
-    console.error('Error fetching campaigns:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch campaigns' },
-      { status: 500 },
-    );
-  }
-}
-export async function PATCH(request: Request) {
-  console.warn('[deprecated] use PATCH /api/campaigns instead');
-  try {
-    const body = await request.json();
-    const { campaignId, status, transactionHash, campaignAddress } = body;
-
-    if (!campaignId) {
-      return NextResponse.json(
-        { error: 'Campaign ID is required' },
-        { status: 400 },
-      );
-    }
-
-    type UpdateData = {
-      status?: CampaignStatus;
-      transactionHash?: string;
-      campaignAddress?: string;
-    };
-
-    const updateData: UpdateData = {};
-    if (status) {
-      const statusMap: Record<string, CampaignStatus> = {
-        draft: CampaignStatus.DRAFT,
-        pending_approval: CampaignStatus.PENDING_APPROVAL,
-        active: CampaignStatus.ACTIVE,
-        completed: CampaignStatus.COMPLETED,
-        failed: CampaignStatus.FAILED,
-      };
-      updateData.status = statusMap[status] || CampaignStatus.DRAFT;
-    }
-    if (transactionHash) updateData.transactionHash = transactionHash;
-    if (campaignAddress) updateData.campaignAddress = campaignAddress;
-
-    const campaign = await prisma.campaign.update({
-      where: {
-        id: Number(campaignId),
-      },
-      data: updateData,
-    });
-
-    return NextResponse.json(campaign);
-  } catch (error) {
-    console.error('Failed to update campaign:', error);
-    return NextResponse.json(
-      { error: 'Failed to update campaign' },
-      { status: 500 },
-    );
+    return response({ campaigns: combinedCampaigns });
+  } catch (error: unknown) {
+    return handleError(error);
   }
 }

@@ -1,10 +1,5 @@
-import { prisma } from '@/lib/prisma';
-import {
-  Campaign,
-  CampaignImage,
-  Payment,
-  User,
-} from '@/.generated/prisma/client';
+import { db } from '@/server/db';
+import type { Campaign, CampaignImage, Payment, User } from '@/server/db';
 
 export type PaymentWithUser = Payment & {
   user: User;
@@ -19,7 +14,7 @@ export async function getCampaignBySlug(
   slug: string,
 ): Promise<CampaignWithRelations | null> {
   try {
-    const campaign = await prisma.campaign.findUnique({
+    const campaign = await db.campaign.findUnique({
       where: { slug },
       include: {
         images: true,
