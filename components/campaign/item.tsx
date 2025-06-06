@@ -103,7 +103,7 @@ export function CampaignItem({
             <div className="flex items-center justify-between text-sm">
               <span className="flex">
                 <div className="px-1 font-bold text-[#55DFAB]">
-                  {campaign.totalRaised}
+                  {campaign.donationCount}
                 </div>
                 donations
               </span>
@@ -118,6 +118,12 @@ export function CampaignItem({
                 </div>
                 of funding goal
               </span>
+            </div>
+            <div className="mb-2 flex items-center justify-between text-xs text-gray-600">
+              <span>
+                ${Number(campaign.totalRaised).toLocaleString()} raised
+              </span>
+              <span>Goal: ${Number(campaign.goalAmount).toLocaleString()}</span>
             </div>
             <Progress
               value={
@@ -175,11 +181,15 @@ export function CampaignItem({
                 </TableRow>
                 <TableRow>
                   <TableHead>Goal Amount</TableHead>
-                  <TableCell>{campaign.goalAmount} USDC</TableCell>
+                  <TableCell>
+                    ${Number(campaign.goalAmount).toLocaleString()} USD
+                  </TableCell>
                 </TableRow>
                 <TableRow>
                   <TableHead>Total Raised</TableHead>
-                  <TableCell>{campaign.totalRaised} USDC</TableCell>
+                  <TableCell>
+                    ${Number(campaign.totalRaised).toLocaleString()} USD
+                  </TableCell>
                 </TableRow>
               </TableBody>
             </Table>

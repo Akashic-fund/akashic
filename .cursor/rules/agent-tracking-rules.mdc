@@ -1,0 +1,139 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Agent-Generated Work Tracking Rules
+
+These rules govern how AI assistant contributions are tracked, documented, and managed in the Akashic project.
+
+## Core Principles
+
+1. **Transparency**: All agent-generated work must be clearly identified and documented
+2. **Accountability**: Every change must be traceable to its implementation step
+3. **Sequential Progress**: Follow implementation-plan.mdc strictly for feature development
+4. **Quality Control**: Agent work must meet the same standards as human contributions
+
+## Implementation Plan Usage Instructions
+
+1. **Sequential Completion**: Complete tasks in the order listed in implementation-plan.mdc
+2. **Mark Complete**: Change `[ ]` to `[x]` when done
+3. **Add Summary**: After completing each task, add a two-line summary in Progress Notes
+4. **Update Status**: Move completed tasks to the Completed Tasks section
+5. **Dependencies**: Use @(unique_task_substring) for explicit dependencies when needed
+
+## Implementation Plan Integration
+
+### Required Process
+1. **Before Starting**: Check implementation-plan.mdc for the next sequential task
+2. **During Work**: Only work on the current task in the sequence
+3. **After Completion**: Update implementation-plan.mdc with:
+   - Mark task as `[x]` (completed)
+   - Add two-line summary in Progress Notes section
+   - Move completed task to Completed Tasks section
+
+### Task Documentation Format
+```markdown
+## Progress Notes
+
+### [Task Name] - [Date]
+**Status**: Done
+**Summary**: Brief description of what was implemented and any key decisions made.
+```
+
+## Agent Work Standards
+
+### Code Changes
+- **File-by-File**: Make changes to individual files with clear context
+- **Explicit Naming**: Use descriptive, explicit variable names
+- **Security First**: Always consider security implications
+- **Performance**: Prioritize code performance where applicable
+- **Testing**: Include appropriate tests for new functionality
+
+### Component Maintainability Rules
+- **Maximum Component Size**: Keep components under 150 lines of code
+- **Single Responsibility**: Each component should have one clear purpose
+- **Composition Over Inheritance**: Break large components into smaller, composable pieces
+- **Extract Custom Hooks**: Move complex logic into reusable hooks
+- **Separate Concerns**: 
+  - UI components handle only presentation
+  - Business logic belongs in hooks or utils
+  - Data fetching separated from UI rendering
+- **File Organization**: Group related components in folders with clear naming
+- **Component Hierarchy**: 
+  - Container components (data fetching, state management)
+  - Presentation components (pure UI, props-driven)
+  - Compound components (related UI elements grouped together)
+
+### Component Extraction Guidelines
+When a component exceeds 150 lines:
+1. **Identify Distinct Sections**: Look for logical UI sections
+2. **Extract Sub-components**: Create focused components for each section
+3. **Move Logic to Hooks**: Extract state management and business logic
+4. **Create Compound Components**: Group related components together
+5. **Maintain Props Interface**: Keep the main component's API stable
+
+### Documentation Requirements
+- **Change Rationale**: Document why changes were made
+- **Implementation Details**: Record key technical decisions
+- **Dependencies**: Note any new dependencies or requirements
+- **Breaking Changes**: Clearly identify any breaking changes
+- **Component Purpose**: Each component file should have a clear docstring explaining its purpose
+
+## Quality Assurance
+
+### Before Committing Agent Work
+1. **Code Review**: Ensure code follows project standards
+2. **Component Size Check**: Verify no component exceeds 150 lines
+3. **Testing**: Verify functionality works as expected
+4. **Documentation**: Update relevant documentation
+5. **Plan Update**: Update implementation-plan.mdc properly
+
+### Error Handling
+- **Linter Errors**: Fix automatically detected issues (max 3 iterations)
+- **Build Failures**: Address compilation/build issues immediately
+- **Test Failures**: Ensure all tests pass before marking complete
+
+## Tracking Categories
+
+### Agent Contributions Include
+- Code generation and modification
+- Documentation updates
+- Configuration changes
+- Database schema updates
+- API endpoint creation
+- UI component development
+- Bug fixes and optimizations
+
+### Human Oversight Required For
+- Architecture decisions
+- Security-critical changes
+- External integrations
+- Production deployments
+- Major refactoring
+- Breaking changes
+
+## Workflow Integration
+
+### With Docker/pnpm Rules
+- Follow existing docker-pnpm-rules.mdc for environment setup
+- Use proper container contexts for different operations
+- Maintain development/production environment separation
+
+### With Git Workflow
+- Each completed task should result in logical commits
+- Commit messages should reference implementation plan tasks
+- Use conventional commit format when applicable
+
+## Reporting
+
+### Weekly Agent Work Summary
+Track in implementation-plan.mdc:
+- Tasks completed by agent
+- Code changes made
+- Tests added/modified
+- Documentation updates
+- Any issues encountered
+
+---
+*These rules ensure transparent and accountable AI assistant contributions to the project*

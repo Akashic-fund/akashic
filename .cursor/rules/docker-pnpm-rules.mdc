@@ -16,16 +16,20 @@ alwaysApply: true
 ### Database Operations
 - Database migrations MUST be executed inside the app container:
   ```bash
-  docker-compose exec app pnpm prisma migrate dev
-  docker-compose exec app pnpm prisma db seed
+  docker compose exec app pnpm prisma migrate dev
+  docker compose exec app pnpm prisma db seed
+  ```
+- For troubleshooting, use deploy instead of dev:
+  ```bash
+  docker compose exec app pnpm prisma migrate deploy
   ```
 - Database resets MUST follow this sequence:
   ```bash
-  docker-compose down -v
-  docker-compose up -d
-  docker-compose exec app pnpm prisma generate
-  docker-compose exec app pnpm prisma migrate dev
-  docker-compose exec app pnpm prisma db seed
+  docker compose down -v
+  docker compose up -d
+  docker compose exec app pnpm prisma generate
+  docker compose exec app pnpm prisma migrate dev
+  docker compose exec app pnpm prisma db seed
   ```
 
 ### Package Management
@@ -37,28 +41,42 @@ alwaysApply: true
   ```
 - When container is not running, use Docker exec:
   ```bash
-  docker-compose exec app pnpm install
-  docker-compose exec app pnpm add <package-name>
-  docker-compose exec app pnpm remove <package-name>
+  docker compose exec app pnpm install
+  docker compose exec app pnpm add <package-name>
+  docker compose exec app pnpm remove <package-name>
   ```
 - NEVER use npm or yarn commands
 - After installing packages on host, restart the development server:
   ```bash
-  docker-compose restart app
+  docker compose restart app
   ```
 
 ### Development Commands
 - Next.js development server MUST be started via Docker:
   ```bash
-  docker-compose up
+  docker compose up
   ```
 - Build commands MUST be executed inside the app container:
   ```bash
-  docker-compose exec app pnpm build
-  docker-compose exec app pnpm start
+  docker compose exec app pnpm build
+  docker compose exec app pnpm start
+  ```
+
+### Development Shell Access
+- For extended development sessions, use the app-shell service:
+  ```bash
+  docker compose run --rm app-shell /bin/bash
+  ```
+- Files created as root in container may need ownership correction:
+  ```bash
+  pnpm chown  # Fix file ownership after container operations
   ```
 
 ### Environment Setup
+- Copy template and configure environment variables:
+  ```bash
+  cp env.template .env.local
+  ```
 - Environment variables MUST be set in `.env.local`
 - Database connection MUST use the Docker service name:
   ```
@@ -68,11 +86,15 @@ alwaysApply: true
 ### Container Management
 - Container cleanup MUST use:
   ```bash
-  docker-compose down
+  docker compose down
   ```
 - For complete reset including volumes:
   ```bash
-  docker-compose down -v
+  docker compose down -v
+  ```
+- For detached mode:
+  ```bash
+  docker compose up -d
   ```
 
 ## Security Rules
@@ -87,20 +109,21 @@ alwaysApply: true
    - Ensure migrations are applied
 2. If package installation fails:
    - Clear pnpm store: `pnpm store prune`
-   - Rebuild container: `docker-compose build app`
+   - Rebuild container: `docker compose build app`
 3. If container fails to start:
-   - Check logs: `docker-compose logs app`
+   - Check logs: `docker compose logs app`
    - Verify port availability
    - Check for conflicting services
 
 ## Best Practices
-1. Always use `docker-compose exec app` for commands that need to run inside the container
-2. Use `docker-compose up -d` for detached mode when appropriate
+1. Always use `docker compose exec app` for commands that need to run inside the container
+2. Use `docker compose up -d` for detached mode when appropriate
 3. Keep Docker images updated with security patches
 4. Monitor container resource usage
 5. Use volume mounts for development to enable hot reloading
 6. Install packages directly on host machine in development mode for better IDE integration
 7. Restart the development server after installing new packages to ensure proper hot reloading
+8. Use app-shell service for extended development sessions requiring multiple commands
 
 ## Cross-Platform Considerations
 1. Ensure Prisma schema includes all necessary binary targets:

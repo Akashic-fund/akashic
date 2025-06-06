@@ -12,25 +12,27 @@ import { CampaignDaysLeft } from '@/components/campaign/days-left';
 export function CampaignCardFull({ campaign }: { campaign: CampaignDisplay }) {
   const raisedAmount = useMemo(() => {
     return (
-      campaign.payments?.reduce((sum: number, payment) => {
+      campaign.confirmedPayments?.reduce((sum: number, payment) => {
         const amount = Number(payment.amount) || 0;
         return sum + amount;
       }, 0) ?? 0
     );
-  }, [campaign.payments]);
+  }, [campaign.confirmedPayments]);
+
   const goalAmount = useMemo(
     () => Number(campaign.fundingGoal) || 0,
     [campaign.fundingGoal],
   );
+
   const progress = useMemo(() => {
     if (goalAmount === 0) {
       return 0;
     }
     return Math.min((raisedAmount / goalAmount) * 100, 100);
   }, [raisedAmount, goalAmount]);
-  const paymentCount = useMemo(() => {
-    return campaign.payments?.length || 0;
-  }, [campaign.payments]);
+
+  const donationCount = campaign.donationCount;
+
   return (
     <Card className="sticky top-8">
       <CardContent className="space-y-6 p-6">
@@ -48,7 +50,7 @@ export function CampaignCardFull({ campaign }: { campaign: CampaignDisplay }) {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5 text-gray-500" />
-              <span className="text-2xl font-bold">{paymentCount}</span>
+              <span className="text-2xl font-bold">{donationCount}</span>
             </div>
             <p className="text-sm text-gray-600">backers</p>
           </div>

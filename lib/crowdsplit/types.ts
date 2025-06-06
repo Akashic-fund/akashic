@@ -170,3 +170,17 @@ export interface CrowdsplitAssociateWalletResponse {
   status: string;
   [key: string]: unknown;
 }
+
+export interface CrowdsplitCustomerData {
+  id: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+export interface CrowdsplitGetCustomerApiResponse {
+  execStatus: boolean;
+  httpStatus: number;
+  msg: string;
+  data: CrowdsplitCustomerData;
+}

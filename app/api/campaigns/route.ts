@@ -158,6 +158,11 @@ function formatCampaignData(
         return accumulator + value;
       }, 0) ?? 0,
     images: dbCampaign.images,
+    payments: dbCampaign.payments,
+    confirmedPayments:
+      dbCampaign.payments?.filter((p) => p.status === 'confirmed') || [],
+    donationCount:
+      dbCampaign.payments?.filter((p) => p.status === 'confirmed').length || 0,
     slug: dbCampaign.slug,
     location: dbCampaign.location,
     category: dbCampaign.category,
@@ -359,8 +364,7 @@ export async function GET(req: Request) {
             },
           },
           payments: {
-            // requires amount to be numeric: _sum: { amount: true },
-            where: { token: 'USDC', type: 'BUY', status: 'confirmed' },
+            where: { status: 'confirmed', type: 'BUY' },
           },
         },
         skip,

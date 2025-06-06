@@ -53,6 +53,8 @@ export type CampaignDisplay = {
   treasuryAddress?: string | null;
   images: CampaignImage[];
   payments?: Payment[];
+  confirmedPayments: Payment[];
+  donationCount: number;
   comments?: Comment[];
   updates?: {
     id: number;
@@ -86,11 +88,12 @@ export type CampaignImage = {
 export type Payment = {
   id: number;
   amount: string; // Stored as string to preserve precision
-  token?: string; // e.g., "USDC"
+  token?: string; // Standard: "USDC" (Circle's native multi-chain token on Celo)
   type?: 'BUY' | 'SELL';
   status?: string; // 'pending' | 'confirmed' | 'failed'; // Assuming possible statuses
   transactionHash?: string | null;
   isAnonymous?: boolean;
+  metadata?: any; // Stores payment method info and other metadata
   createdAt?: Date;
   updatedAt?: Date;
   campaignId?: number;
@@ -119,6 +122,8 @@ export interface Campaign extends DbCampaign {
   totalRaised: string;
   location: string | null;
   amountRaised?: string;
+  confirmedPayments: Payment[];
+  donationCount: number;
 }
 
 export interface CombinedCampaignData {

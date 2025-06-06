@@ -1,4 +1,4 @@
-import DonationForm from '@/components/donation-form';
+import DonationForm from '@/components/donation/donation-form';
 import ProjectInfo from '@/components/project-info';
 import { Campaign } from '@/types/campaign';
 import { getCampaign } from '@/lib/database';

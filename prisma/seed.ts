@@ -122,7 +122,7 @@ function randomAddress(): string {
 }
 async function createUsers(amount: number, roles: string[]) {
   const userPromises = [];
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < amount; i++) {
     userPromises.push(
       db.user.create({
         data: {
@@ -133,6 +133,37 @@ async function createUsers(amount: number, roles: string[]) {
     );
   }
   return await Promise.all(userPromises);
+}
+
+// Generate realistic funding goals ($1,000 - $50,000)
+function generateFundingGoal(): string {
+  const goals = [
+    1000, 2500, 5000, 7500, 10000, 15000, 20000, 25000, 35000, 50000,
+  ];
+  return selectRandom(goals).toString();
+}
+
+// Generate realistic campaign descriptions
+function generateDescription(title: string): string {
+  const descriptions = [
+    `${title} aims to provide immediate relief and long-term support to displaced families. Our comprehensive approach includes emergency assistance, community building, and sustainable development initiatives.`,
+    `Join us in supporting ${title.toLowerCase()} through a community-driven initiative. We work directly with local organizations to ensure maximum impact and transparency in our humanitarian efforts.`,
+    `${title} addresses critical needs in refugee communities through innovative solutions and grassroots partnerships. Every contribution directly funds essential services and empowerment programs.`,
+    `Help us expand ${title.toLowerCase()} to reach more families in need. This campaign focuses on sustainable impact through education, healthcare, and economic empowerment initiatives.`,
+    `${title} is a collaborative effort to restore dignity and hope to displaced communities. We prioritize community-led solutions and long-term capacity building.`,
+  ];
+  return selectRandom(descriptions);
+}
+
+// Generate random number of payments per campaign (2-15)
+function generatePaymentCount(): number {
+  return Math.floor(Math.random() * 14) + 2; // 2-15 payments
+}
+
+// Generate realistic payment amounts ($5-$500)
+function generatePaymentAmount(): string {
+  const amounts = [5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 250, 300, 500];
+  return selectRandom(amounts).toString();
 }
 
 async function main() {
@@ -152,12 +183,15 @@ async function main() {
 
   const campaigns = Array.from({ length: 10 }, (_, i) => ({
     title: campaignTitles[i],
-    description: `Description for campaign ${i + 1}`,
-    fundingGoal: '1.0',
+    description: generateDescription(campaignTitles[i]),
+    fundingGoal: generateFundingGoal(),
     startTime: new Date(),
     endTime: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     creatorAddress: '0x1234567890123456789012345678901234567890',
-    status: campaignStatuses[i % campaignStatuses.length],
+    status:
+      i < 7
+        ? CampaignStatus.ACTIVE
+        : campaignStatuses[i % campaignStatuses.length],
     slug: generateSlug(campaignTitles[i]),
     transactionHash: `0xdeadbeef${(i + 1).toString().padStart(2, '0')}`,
     campaignAddress: campaignAddresses[i] || null,
@@ -165,15 +199,23 @@ async function main() {
     category: campaignCategories[i % campaignCategories.length].id,
     location: locations[i % locations.length],
   }));
+
+  // Clear existing data
   await db.campaignImage.deleteMany();
   await db.campaignCollection.deleteMany();
   await db.payment.deleteMany();
   await db.campaign.deleteMany();
-  const donorUsers = await createUsers(100, ['user']);
+
+  // Create 25 users instead of 100 (more realistic for debugging)
+  const donorUsers = await createUsers(25, ['user']);
+
+  let totalPayments = 0;
+
   for (let i = 0; i < campaigns.length; i++) {
     const campaign = await db.campaign.create({
       data: campaigns[i],
     });
+
     // Assign an image from the local file system
     const imageFile = imageFiles[i % imageFiles.length];
     await db.campaignImage.create({
@@ -183,19 +225,36 @@ async function main() {
         campaignId: campaign.id,
       },
     });
-    for (let i = 0; i < 100; i++) {
+
+    // Generate 2-15 payments per campaign (randomized)
+    const paymentCount = generatePaymentCount();
+    totalPayments += paymentCount;
+
+    for (let j = 0; j < paymentCount; j++) {
+      // Generate realistic payment method distribution
+      // 60% credit card, 40% crypto
+      const isCreditCard = Math.random() < 0.6;
+
       await db.payment.create({
         data: {
-          amount: `${Math.random() * 100}`,
-          token: selectRandom(['USDC', 'ETH', 'CELLO']),
+          amount: generatePaymentAmount(),
+          token: 'USD', // All payments are processed as USD by CrowdSplit
           status: selectRandom([
-            'pending',
             'confirmed',
-            'confirming',
-            'failed',
+            'confirmed',
+            'confirmed', // Higher chance of confirmed
+            'pending',
+            'pending', // Some pending
+            'failed', // Occasional failures
           ]),
           type: 'BUY',
-          transactionHash: randomHash(),
+          // Credit card payments don't have blockchain transaction hashes
+          transactionHash: isCreditCard ? null : randomHash(),
+          // Track payment method in metadata for proper link display
+          metadata: {
+            paymentMethod: isCreditCard ? 'credit_card' : 'crypto',
+            originalToken: isCreditCard ? 'USD' : 'USDC', // Native USDC on Celo (Circle-issued)
+          },
           campaign: { connect: { id: campaign.id } },
           user: {
             connect: { id: selectRandom(donorUsers.map(({ id }) => id)) },
@@ -205,7 +264,9 @@ async function main() {
     }
   }
 
-  console.log(`Seeded ${campaigns.length} campaigns with images`);
+  console.log(
+    `Seeded ${campaigns.length} campaigns with images and ${totalPayments} total payments`,
+  );
 }
 
 main()

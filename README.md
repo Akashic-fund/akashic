@@ -97,8 +97,13 @@ echo "DEV_APP_PORT=1234" >> .env
 
 ### Development Container
 
-In order to run commands, use the shell service: `docker compose run --rm
-app-shell /bin/bash` This will start the required services (database,app) and
+In order to run commands, use the shell service: 
+
+```bash
+docker compose run --rm app-shell /bin/bash
+```
+
+This will start the required services (database,app) and
 drop you in a shell that has the correct node version, pnpm et al installed. Its
 a alpine-based minimal container with some development tools. You are root in
 that container, you may install more software (`apk add`) which is gone once you
@@ -113,7 +118,27 @@ prefixed with `aka-app` so you immediately see that you are not in your host.
 
 Sometimes it is required to inquire the postgres database directly. If you
 prefer a desktop-tool, just expose the port of the database-container to your
-host, but ideally all you need is a browser. To start the pgadmin database tool,
+host, but ideally all you need is a browser. 
+
+#### Prisma Studio (Database Browser)
+
+Prisma Studio provides a visual interface to browse and edit your database data:
+
+**Option 1: Direct Docker Exec**
+```bash
+docker compose exec app pnpm prisma studio --port 5555
+```
+
+**Option 2: Via App Shell**
+```bash
+docker compose run --rm app-shell pnpm prisma studio --port 5555
+```
+
+After starting Prisma Studio, navigate to [http://localhost:5555](http://localhost:5555) to access the database browser interface.
+
+#### pgAdmin (Alternative Database Tool)
+
+To start the pgadmin database tool,
 run `docker compose --profile develop up -d`. after a few seconds navigate to
 https://localhost:3001 (PGADMIN_PORT) and see a login, the default is
 `admin@local.host` with the password `admin`. After you are signed in, connect
@@ -178,6 +203,7 @@ PRISMA_LOG_LEVELS=error,warn,query
 - `pnpm build` - Build for production
 - `pnpm start` - Start production server
 - `pnpm prisma ...` - Run Prisma CLI commands
+- `pnpm prisma studio` - Launch Prisma Studio database browser (port 5555)
 
 ## Docker Commands (Development Only)
 

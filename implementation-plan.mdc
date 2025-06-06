@@ -1,0 +1,322 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Implementation Plan
+
+This file tracks the sequential implementation of features and tasks in the Akashic project using markdown-plan syntax.
+
+## Current Sprint
+
+### Setup and Infrastructure Tasks
+
+1. [x] Create implementation tracking system
+   - [x] Set up implementation-plan.mdc file
+   - [x] Create agent work tracking rules
+   - [x] Establish workflow for progress updates
+
+2. [ ] Agent-Generated Work Tracking
+   - [x] Define rules for AI assistant contributions
+   - [ ] Set up tracking for automated changes
+   - [ ] Create documentation standards for agent work
+
+### Donation Form Optimization
+
+3. [ ] Improve Donation Form Performance and UX
+   - [x] Implement code splitting for Stripe Elements to reduce initial bundle size
+   - [x] Add loading states and skeleton components during Stripe initialization
+   - [x] Optimize form validation with debounced input handling
+   - [x] Implement proper error boundaries for payment failures
+   - [x] Add progress indicators for multi-step payment flow
+   - [ ] Improve mobile responsiveness and touch targets
+
+3.1. [x] Refactor Donation Form Component Architecture
+   - [x] Break down 485-line component into smaller, focused components (<150 LOC each)
+   - [x] Extract payment method selection into separate component
+   - [x] Create dedicated amount input component with validation
+   - [x] Extract donation summary component
+   - [x] Create progress indicator component
+   - [x] Move business logic to custom hooks
+   - [x] Organize components in logical folder structure
+   - [x] Connect refactored form to app and clean up old files
+
+4. [ ] Enhance Donation Form UI/UX
+   - [x] Implement suggested donation amounts based on campaign data
+   - [ ] Add social proof elements (recent donations, total raised)
+   - [x] Improve accessibility with ARIA labels and keyboard navigation
+   - [ ] Add donation impact visualization (what $X can achieve)
+   - [x] Implement donation amount validation with helpful messaging
+   - [ ] Add currency formatting and localization support
+
+### Payment System Integration
+
+4.1. [x] Fix Payment Flow Performance Issues 
+   - [x] Move Stripe API calls from form load to "Donate" button click
+   - [x] Prevent eager execution of useStripePaymentCallback hook
+   - [x] Implement lazy payment intent creation only when user commits to donate
+   - [x] Add proper loading states during API call sequence
+   - [x] Optimize API call sequence to reduce total request time
+   - [x] Add error recovery for individual API call failures
+   - [x] Remove unhelpful progress indicator and simplify form UI
+   - [x] Fix all TypeScript and linting issues in donation components
+   - [x] Ensure crypto payments work correctly with isAnonymous flag
+   - [x] Rename AkashicDonationToggle to DonationToggle for better naming
+   - [x] Add authentication handling to show clear wallet connect prompts
+   - [x] Improve API error messages to show specific authentication issues
+
+4.2. [x] Refactor Stripe Component Architecture 
+   - [x] Remove original stripe-form.tsx and use-stripe.ts legacy implementations
+   - [x] Break down 308-line stripe-form-lazy.tsx into 6 focused components (<150 LOC each)
+   - [x] Extract useStripeIsReady hook for Stripe readiness checking
+   - [x] Create StripeFormSkeleton component for loading states
+   - [x] Extract PaymentErrorBoundary component for error handling
+   - [x] Create useStripeFormSubmission hook for payment processing logic
+   - [x] Restructure LazyStripeForm as orchestrator component only
+   - [x] Fix button disable issue when payment intent creation fails
+   - [x] Allow retry for card payments after temporary API failures
+
+4.3. [x] Implement Payment Database Persistence
+   - [x] Understand CrowdSplit as unified API wrapping Stripe (cards) and Bridge.xyz (crypto)
+   - [x] Update CrowdSplit webhook handler to use body secret authentication
+   - [x] Modify /api/crowdsplit/payments to save payment records to database
+   - [x] Ensure payment records include campaign ID and anonymous flag
+   - [x] Update hooks to pass required data (campaign ID, isAnonymous) to API endpoints
+   - [x] Add proper error handling and logging for webhook processing
+   - [x] Support both credit card (via Stripe) and crypto (via Bridge.xyz) payments through unified CrowdSplit webhook
+   - [x] Remove standalone Stripe webhook handler (not needed since CrowdSplit handles everything)
+
+4.4. [x] Optimize Customer Creation Flow for Donations
+   - [x] Add getCustomer method to CrowdSplit service for fetching existing customers by ID
+   - [x] Create API endpoint to retrieve customer details from CrowdSplit API 
+   - [x] Refactor use-stripe-lazy hook to check for existing crowdsplitCustomerId before creating new customer
+   - [x] Update donation flow to: 1) Check user's crowdsplitCustomerId from profile, 2) If exists, fetch customer details, 3) If not exists, create new customer
+   - [x] Ensure customer data is properly cached and reused across donation sessions
+   - [x] Add proper error handling for customer retrieval failures with fallback to creation
+   - [x] Add comprehensive debug logging to track customer get vs create operations
+
+5. [x] Implement Stripe Webhook Handler
+   - [x] ~~Create /api/webhooks/stripe endpoint~~ (Not needed - CrowdSplit handles all webhooks)
+   - [x] ~~Handle payment_intent.succeeded events~~ (Handled by CrowdSplit webhook)
+   - [x] ~~Handle payment_intent.payment_failed events~~ (Handled by CrowdSplit webhook)
+   - [x] ~~Verify webhook signatures~~ (CrowdSplit uses body secret authentication)
+   - [x] ~~Update payment status in database~~ (Handled by unified CrowdSplit webhook)
+   - [x] ~~Add proper error handling and logging~~ (Handled by unified CrowdSplit webhook)
+
+6. [x] Enhance CrowdSplit Webhook Integration
+   - [x] Update authentication method to use body secret validation
+   - [x] Handle both Stripe (credit card) and Bridge.xyz (crypto) payment events
+   - [x] Add comprehensive logging and debugging for webhook events
+   - [x] Map CrowdSplit status codes to internal payment status correctly
+   - [x] Store webhook metadata for troubleshooting and audit trail
+   - [x] Support both transaction.updated and transaction.update event types
+
+6.1. [x] Enhance CrowdSplit Webhook and Payment Authentication
+   - [x] Review and improve webhook secret validation with constant-time comparison
+   - [x] Implement HMAC SHA256 signature verification for future compatibility
+   - [x] Add Stripe-style timestamp signature validation support
+   - [x] Create shared webhook authentication utility to reduce code duplication
+   - [x] Enhance payment route validation and error handling patterns
+   - [x] Update all webhook endpoints to use consistent API error patterns
+   - [x] Add comprehensive request validation and parameter checking
+   - [x] Improve debug logging and error reporting for webhook processing
+
+6.2. [x] Implement Unified CrowdSplit Webhook Handler
+   - [x] Create single webhook endpoint that handles all CrowdSplit event types
+   - [x] Implement internal event routing based on event type (transaction.updated, kyc.status_updated)
+   - [x] Consolidate payment and KYC webhook logic into unified handler
+   - [x] Remove separate /payments and /kyc webhook endpoints (early development - no deprecation needed)
+   - [x] Add comprehensive event type detection and validation
+   - [x] Maintain all existing authentication and security features
+   - [x] Update webhook documentation to reflect unified approach
+   - [x] Test unified endpoint with proper event routing functionality
+
+6.3. [x] Improve Database Seed Script for Realistic Testing
+   - [x] Reduce number of generated payments from 1000 to ~100 (2-15 per campaign, randomized)
+   - [x] Create realistic funding goals ($1,000-$50,000 instead of $1.0)
+   - [x] Generate proper campaign descriptions instead of generic placeholders
+   - [x] Reduce user count from 100 to 25 (more manageable for debugging)
+   - [x] Create realistic payment amounts ($5-$500 instead of random decimals)
+   - [x] Improve payment status distribution (more confirmed, fewer failed)
+   - [x] Add total payment count logging for better feedback
+
+### Payment Visibility and UI
+
+7. [x] Enhance Payment Display in UI
+   - [x] Fix campaign status distribution to show mostly ACTIVE campaigns (7/10)
+   - [x] Fix payment calculation logic to only count confirmed payments
+   - [x] Correct campaign item display to show donation count vs amount raised
+   - [x] Add proper currency formatting for raised amounts and goals
+   - [x] Fix payment list loading to show recent confirmed donations
+   - [x] Fix currency formatting consistency (USDC/USD display issues)
+   - [x] Update seed script to use native USDC on Celo blockchain
+   - [x] Improve CrowdSplit API error handling and bubbling
+   - [ ] Add real-time payment status updates in campaign transaction tabs
+   - [ ] Implement donation success page with proper payment confirmation
+   - [ ] Add payment status badges (pending, confirmed, failed)
+   - [ ] Show payment method information (card vs wallet) in transaction history
+   - [ ] Add donation receipt generation and email notifications
+
+7.1. [x] Fix Campaign Display Issues
+   - [x] Update seed script to generate 7/10 ACTIVE campaigns instead of 2/10
+   - [x] Fix campaign card to display actual donation count (not amount)
+   - [x] Add proper currency formatting with thousands separators
+   - [x] Ensure only confirmed payments count toward totals and progress
+   - [x] Fix campaign item to show raised amount vs goal clearly
+
+7.2. [x] Fix Currency and Payment Method Consistency
+   - [x] Identify and fix USDC display showing 6 decimals (100.000000 USDC)
+   - [x] Update formatCrypto function to display USDC/USD with 2 decimals
+   - [x] Make donation summary show consistent USD formatting
+   - [x] Update seed script to use USDC (native on Celo) instead of mixed tokens
+   - [x] Ensure payment method tracking works with credit card vs crypto
+   - [x] Fix transaction links to only show for crypto payments (not credit card)
+   - [x] Update payment display to show "via USDC" or "Credit Card" appropriately
+
+7.3. [x] Improve CrowdSplit API Error Handling
+   - [x] Remove hardcoded payment amount limits pending clarification with CrowdSplit
+   - [x] Enhance error bubbling to pass actual API error messages to frontend
+   - [x] Improve CrowdSplit service error extraction and preservation
+   - [x] Update payment route to handle API validation errors properly
+   - [x] Ensure users see actual API limit messages instead of generic errors
+
+8. [ ] Implement Payment Dashboard
+   - [ ] Create donor dashboard showing personal donation history
+   - [ ] Add payment filtering and search functionality
+   - [ ] Implement donation analytics and reporting
+   - [ ] Add campaign-specific donation tracking
+   - [ ] Show payment method usage statistics
+   - [ ] Add export functionality for donation records
+
+### Testing and Quality Assurance
+
+9. [ ] Testing and Validation
+   - [ ] Create comprehensive test suite for payment flows
+   - [ ] Add integration tests for webhook processing
+   - [ ] Test payment failure scenarios and recovery
+   - [ ] Validate payment data integrity across systems
+   - [ ] Performance testing for donation form load times
+   - [ ] Cross-browser compatibility testing for payment forms
+
+## Completed Tasks
+
+### Infrastructure Setup
+1. [x] Create implementation tracking system - Done 2025-01-21
+   - Set up implementation-plan.mdc file using markdown-plan syntax
+   - Created agent-tracking-rules.mdc with comprehensive guidelines for AI assistant work
+
+### Donation Form Performance Optimization - 2025-01-21
+**Status**: In Progress
+**Summary**: Implemented code splitting for Stripe Elements, created lazy-loaded components with error boundaries, added debounced validation hooks, progress indicators, and enhanced UX with suggested amounts and real-time validation feedback.
+
+### Refactor Donation Form Component Architecture - [Current Date]
+**Status**: Done
+**Summary**: Successfully broke down 485-line monolithic component into 6 focused components (each <80 LOC) and custom hook for business logic.
+Created maintainable, testable, and reusable components following single responsibility principle with proper separation of concerns.
+
+### Connect Refactored Form and Clean Up - [Current Date]
+**Status**: Done
+**Summary**: Connected new refactored donation form to app/campaigns/[slug]/donation/page.tsx and removed old unused files.
+Cleaned up codebase by deleting donation-form.tsx and donation-form-optimized.tsx, eliminating file clutter.
+
+### Fix Payment Flow Performance Issues - 2025-01-21
+**Status**: Done  
+**Summary**: Completely resolved the 20+ second performance issue by implementing lazy payment intent creation. Enhanced error handling with detailed authentication messages, added proper wallet connection prompts, and ensured both crypto and Stripe payments work correctly with anonymous donation support. All components follow maintainability guidelines.
+
+### Refactor Stripe Component Architecture - 2025-01-21
+**Status**: Done
+**Summary**: Successfully removed legacy implementations and broke down 308-line component into 6 focused components (<150 LOC each). Created modular architecture with useStripeIsReady hook, StripeFormSkeleton, PaymentErrorBoundary, useStripeFormSubmission hook, and LazyStripeForm orchestrator. Fixed button disable issue when payment intent creation fails and enabled retry for card payments after temporary API failures. All components now follow maintainability best practices.
+
+### Implement Payment Database Persistence - 2025-01-21
+**Status**: Done  
+**Summary**: Successfully implemented payment database persistence with unified CrowdSplit webhook handler. CrowdSplit wraps both Stripe (credit cards) and Bridge.xyz (crypto/stablecoins), so all webhooks come through the single CrowdSplit endpoint. Updated payment creation to save records with proper provider ('CROWDSPLIT'), token types (USD for cards, native USDC for crypto on Celo), and metadata to distinguish underlying payment methods.
+
+### Enhance CrowdSplit Webhook and Payment Authentication - [Current Date]
+**Status**: Done
+**Summary**: Enhanced webhook authentication with multi-method support including payload secrets, HMAC SHA256, and Stripe-style signatures. Created shared authentication utility to reduce code duplication. Improved payment route validation with proper error handling patterns, request validation, and comprehensive debug logging. All endpoints now follow consistent API patterns with timing-attack protection.
+
+### Implement Unified CrowdSplit Webhook Handler - [Current Date]
+**Status**: Done
+**Summary**: Created single webhook endpoint that handles all CrowdSplit event types. Implemented internal event routing based on event type (transaction.updated, kyc.status_updated). Consolidated payment and KYC webhook logic into unified handler. Removed separate /payments and /kyc webhook endpoints (early development - no deprecation needed). Added comprehensive event type detection and validation. Maintained all existing authentication and security features. Updated webhook documentation to reflect unified approach. Tested unified endpoint with proper event routing functionality.
+
+### Improve Database Seed Script for Realistic Testing - [Current Date]
+**Status**: Done
+**Summary**: Completely overhauled seed script to generate realistic test data. Reduced payments from 1000 to ~100 total (2-15 per campaign). Created realistic funding goals ($1K-$50K) and proper descriptions. Reduced users to 25 for better debugging. Generated realistic payment amounts ($5-$500) with better status distribution. Now produces manageable, realistic data perfect for development and QA testing.
+
+### Fix Campaign Display Issues - [Current Date]
+**Status**: Done
+**Summary**: Fixed major UI display issues affecting campaign visibility and metrics. Updated seed script to generate 7/10 ACTIVE campaigns (was 2/10), making most campaigns visible to users. Fixed campaigns list API to include all confirmed payment tokens (not just USDC), resolving inconsistency between campaign list ($200) and detail view ($315). Fixed campaign item component to show actual donation count instead of raised amount. Added payments array to campaigns API response so frontend can calculate donation counts. Now campaign lists show accurate, meaningful data with consistent totals across all views.
+
+### Currency and Payment Display Consistency - 2025-01-16
+**Status**: Complete
+**Summary**: Fixed USDC display to show as clean USD format ($100.00) instead of crypto format (100.000000 USDC). Updated seed script to use native USDC on Celo blockchain and improved CrowdSplit API error handling to bubble actual API messages to users instead of generic errors.
+
+### Optimize Customer Creation Flow for Donations - 2025-01-22
+**Status**: Done
+**Summary**: Implemented optimized customer creation flow that checks for existing crowdsplitCustomerId before creating new customers, reducing unnecessary API calls and improving performance. Added proper error handling with fallback to customer creation when retrieval fails. Enhanced with comprehensive debug logging to track customer operations.
+
+## Task Dependencies
+
+Tasks should be completed in the order listed above. Critical dependencies:
+- Task 5 (Stripe Webhook Handler) must be completed before Task 6 (Payment Database Persistence)
+- Task 6 must be completed before Task 7 (Payment Display UI)
+- Tasks 3-4 (Donation Form Optimization) can be worked on in parallel with payment system tasks
+
+## Progress Notes
+
+### Implementation Tracking System Setup - 2025-01-21
+**Status**: Done
+**Summary**: Created implementation-plan.mdc file using markdown-plan syntax and established agent-tracking-rules.mdc with comprehensive guidelines for AI assistant work tracking and documentation standards.
+
+### Donation Form Performance Optimization - 2025-01-21
+**Status**: In Progress
+**Summary**: Implemented code splitting for Stripe Elements, created lazy-loaded components with error boundaries, added debounced validation hooks, progress indicators, and enhanced UX with suggested amounts and real-time validation feedback.
+
+### Refactor Donation Form Component Architecture - [Current Date]
+**Status**: Done
+**Summary**: Successfully broke down 485-line monolithic component into 6 focused components (each <80 LOC) and custom hook for business logic.
+Created maintainable, testable, and reusable components following single responsibility principle with proper separation of concerns.
+
+### Connect Refactored Form and Clean Up - [Current Date]
+**Status**: Done
+**Summary**: Connected new refactored donation form to app/campaigns/[slug]/donation/page.tsx and removed old unused files.
+Cleaned up codebase by deleting donation-form.tsx and donation-form-optimized.tsx, eliminating file clutter.
+
+### Fix Payment Flow Performance Issues - 2025-01-21
+**Status**: Done  
+**Summary**: Completely resolved the 20+ second performance issue by implementing lazy payment intent creation. Enhanced error handling with detailed authentication messages, added proper wallet connection prompts, and ensured both crypto and Stripe payments work correctly with anonymous donation support. All components follow maintainability guidelines.
+
+### Refactor Stripe Component Architecture - 2025-01-21
+**Status**: Done
+**Summary**: Successfully removed legacy implementations and broke down 308-line component into 6 focused components (<150 LOC each). Created modular architecture with useStripeIsReady hook, StripeFormSkeleton, PaymentErrorBoundary, useStripeFormSubmission hook, and LazyStripeForm orchestrator. Fixed button disable issue when payment intent creation fails and enabled retry for card payments after temporary API failures. All components now follow maintainability best practices.
+
+### Implement Payment Database Persistence - 2025-01-21
+**Status**: Done  
+**Summary**: Successfully implemented payment database persistence with unified CrowdSplit webhook handler. CrowdSplit wraps both Stripe (credit cards) and Bridge.xyz (crypto/stablecoins), so all webhooks come through the single CrowdSplit endpoint. Updated payment creation to save records with proper provider ('CROWDSPLIT'), token types (USD for cards, native USDC for crypto on Celo), and metadata to distinguish underlying payment methods.
+
+### Enhance CrowdSplit Webhook and Payment Authentication - [Current Date]
+**Status**: Done
+**Summary**: Enhanced webhook authentication with multi-method support including payload secrets, HMAC SHA256, and Stripe-style signatures. Created shared authentication utility to reduce code duplication. Improved payment route validation with proper error handling patterns, request validation, and comprehensive debug logging. All endpoints now follow consistent API patterns with timing-attack protection.
+
+### Implement Unified CrowdSplit Webhook Handler - [Current Date]
+**Status**: Done
+**Summary**: Created single webhook endpoint that handles all CrowdSplit event types. Implemented internal event routing based on event type (transaction.updated, kyc.status_updated). Consolidated payment and KYC webhook logic into unified handler. Removed separate /payments and /kyc webhook endpoints (early development - no deprecation needed). Added comprehensive event type detection and validation. Maintained all existing authentication and security features. Updated webhook documentation to reflect unified approach. Tested unified endpoint with proper event routing functionality.
+
+### Improve Database Seed Script for Realistic Testing - [Current Date]
+**Status**: Done
+**Summary**: Completely overhauled seed script to generate realistic test data. Reduced payments from 1000 to ~100 total (2-15 per campaign). Created realistic funding goals ($1K-$50K) and proper descriptions. Reduced users to 25 for better debugging. Generated realistic payment amounts ($5-$500) with better status distribution. Now produces manageable, realistic data perfect for development and QA testing.
+
+### Fix Campaign Display Issues - [Current Date]
+**Status**: Done
+**Summary**: Fixed major UI display issues affecting campaign visibility and metrics. Updated seed script to generate 7/10 ACTIVE campaigns (was 2/10), making most campaigns visible to users. Fixed campaigns list API to include all confirmed payment tokens (not just USDC), resolving inconsistency between campaign list ($200) and detail view ($315). Fixed campaign item component to show actual donation count instead of raised amount. Added payments array to campaigns API response so frontend can calculate donation counts. Now campaign lists show accurate, meaningful data with consistent totals across all views.
+
+### Currency and Payment Display Consistency - 2025-01-16
+**Status**: Complete
+**Summary**: Fixed USDC display to show as clean USD format ($100.00) instead of crypto format (100.000000 USDC). Updated seed script to use native USDC on Celo blockchain and improved CrowdSplit API error handling to bubble actual API messages to users instead of generic errors.
+
+### Optimize Customer Creation Flow for Donations - 2025-01-22
+**Status**: Done
+**Summary**: Implemented optimized customer creation flow that checks for existing crowdsplitCustomerId before creating new customers, reducing unnecessary API calls and improving performance. Added proper error handling with fallback to customer creation when retrieval fails. Enhanced with comprehensive debug logging to track customer operations.
+
+---
+*This file follows the markdown-plan syntax for project tracking*

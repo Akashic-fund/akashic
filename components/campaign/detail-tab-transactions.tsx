@@ -11,11 +11,11 @@ export function CampaignDetailTabTransactions({
     <div className="space-y-4">
       <h2 className="text-2xl font-bold">Transaction History</h2>
       <p className="text-gray-600">
-        All donations to this campaign are listed here.
+        All confirmed donations to this campaign are listed here.
       </p>
 
-      {campaign.payments && campaign.payments.length > 0 ? (
-        <PaymentList payments={campaign.payments} />
+      {campaign.confirmedPayments.length > 0 ? (
+        <PaymentList payments={campaign.confirmedPayments} />
       ) : (
         <PaymentEmpty />
       )}

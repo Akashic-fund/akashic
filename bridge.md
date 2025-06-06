@@ -142,22 +142,26 @@ These Next.js API routes handle requests from the frontend, interact with the `c
 
 ### 4.7. Webhooks
 
-- **`POST /api/crowdsplit/webhook/kyc`**:
-  - **Purpose:** Receives KYC status updates from Crowdsplit.
+- **`POST /api/crowdsplit/webhook`**:
+  - **Purpose:** Unified webhook endpoint that receives ALL webhook events from CrowdSplit and routes them internally.
+  - **Event Types Supported:**
+    - `transaction.updated` -> Payment transaction updates (both Stripe and Bridge.xyz)
+    - `kyc.status_updated` -> KYC status updates
   - **Actions:**
-    1.  (Optional/Production) Verifies the `crowdsplit-signature` header using `CROWDSPLIT_WEBHOOK_SECRET`.
-    2.  Parses the request body.
-    3.  If `event === 'kyc.status_updated'` and `status === 'completed'`, updates the `isKycCompleted` flag to `true` for the user matching `customer_id` in Prisma.
-  - **Returns:** `{ success: true }` (Always returns 200 OK to acknowledge receipt, even if processing fails internally).
-- **`POST /api/webhooks/crowdsplit`**:
-  - **Purpose:** Receives generic transaction updates from Crowdsplit.
-  - **Actions:**
-    1.  (Optional/Production) Verifies the `x-crowdsplit-signature` header using `CROWDSPLIT_CLIENT_SECRET`.
-    2.  Parses the request body.
-    3.  If `event === 'transaction.update'`, finds the corresponding `Payment` record in Prisma using `transaction_id` (as `externalId`).
-    4.  Updates the `status` of the Prisma `Payment` record based on the webhook status (`completed` -> `confirmed`, `failed` -> `failed`, etc.).
-    5.  Stores the webhook payload in the payment's metadata.
-  - **Returns:** `{ success: true }` or error details (returns 200 OK on success, 404 if payment not found, 500 on other errors).
+    1.  Validates webhook authentication using multiple methods (payload secret, HMAC SHA256, Stripe-style signatures).
+    2.  Parses the request body and extracts event type.
+    3.  Routes events internally based on event type:
+       - **Payment Events (`transaction.updated`):**
+         - Finds the corresponding `Payment` record in Prisma using `transaction_id` (as `externalId`).
+         - Updates the `status` of the Prisma `Payment` record based on the webhook status (`COMPLETED` -> `confirmed`, `FAILED` -> `failed`, etc.).
+         - Stores the webhook payload in the payment's metadata.
+       - **KYC Events (`kyc.status_updated`):**
+         - If `status === 'completed'`, updates the `isKycCompleted` flag to `true` for the user matching `customer_id` in Prisma.
+  - **Authentication:** Uses shared webhook authentication utility supporting:
+    - Payload secret validation (current CrowdSplit method)
+    - HMAC SHA256 signature verification (future-ready)
+    - Stripe-style timestamp signature validation (future-ready)
+  - **Returns:** `{ success: true, received: true, event_type: string, authentication_method: string, ... }` (Always returns 200 OK to acknowledge receipt, includes event processing results).
 
 ## 5. Frontend Implementation (`app/profile/...`, `components/profile/...`)
 
@@ -280,7 +284,6 @@ These pages follow a similar pattern:
 ## 8. Potential Improvements & TODOs
 
 - **Standardize API Authorization:** The direct `fetch` call in `POST /api/crowdsplit/wallet-addresses` uses `Bearer` while `crowdsplitService` does not. This should be consistent. Clarify if `Bearer` is actually required by the Crowdsplit API.
-- **Consolidate Webhooks:** Review if two separate webhook handlers (`/api/crowdsplit/webhook/kyc` and `/api/webhooks/crowdsplit`) are necessary or if they can be combined.
 - **Implement Payment Method Deletion:** The backend logic for deleting payment methods in `crowdsplitService` seems missing/commented out. Implement this if required.
 - **Error Handling:** Enhance error handling, potentially providing more user-friendly messages based on specific Crowdsplit API error codes.
 - **Refine Polling:** Consider using WebSockets or Server-Sent Events instead of polling for KYC status updates for better efficiency, although the webhook should be the primary mechanism.

@@ -30,7 +30,7 @@ export function CampaignDetailTabs({
             Comments ({campaign.comments?.length || 0})
           </TabsTrigger>
           <TabsTrigger value="transactions" className={TAB_TRIGGER_CLASS_NAMES}>
-            Transactions ({campaign.payments?.length || 0})
+            Transactions ({campaign.donationCount})
           </TabsTrigger>
         </TabsList>
 

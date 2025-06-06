@@ -102,6 +102,14 @@ export async function getCampaign(
       images: true,
       comments: true,
       updates: true,
+      payments: {
+        include: {
+          user: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      },
     },
   })) as CampaignWithRelations | null;
 
@@ -109,12 +117,31 @@ export async function getCampaign(
     notFound();
   }
 
+  // Calculate total raised from confirmed payments
+  const totalRaised =
+    dbCampaign.payments?.reduce((accumulator, payment) => {
+      // Only count confirmed payments
+      if (payment.status !== 'confirmed') {
+        return accumulator;
+      }
+      const value = Number(payment.amount);
+      if (isNaN(value)) {
+        return accumulator;
+      }
+      return accumulator + value;
+    }, 0) ?? 0;
+
   // Convert the data to match the expected types
   const result: CampaignType & CampaignDisplay = {
     ...dbCampaign,
     images: dbCampaign.images || [],
     comments: dbCampaign.comments || [],
     updates: dbCampaign.updates || [],
+    payments: dbCampaign.payments || [],
+    confirmedPayments:
+      dbCampaign.payments?.filter((p) => p.status === 'confirmed') || [],
+    donationCount:
+      dbCampaign.payments?.filter((p) => p.status === 'confirmed').length || 0,
     address: dbCampaign.campaignAddress || '',
     owner: dbCampaign.creatorAddress,
     launchTime: Math.floor(
@@ -124,8 +151,8 @@ export async function getCampaign(
       new Date(dbCampaign.endTime).getTime() / 1000,
     ).toString(),
     goalAmount: dbCampaign.fundingGoal,
-    totalRaised: '0',
-    amountRaised: '0',
+    totalRaised: totalRaised.toString(),
+    amountRaised: totalRaised.toString(),
     location: dbCampaign.location,
   };
   return result;

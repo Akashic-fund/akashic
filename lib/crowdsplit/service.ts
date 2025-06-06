@@ -16,6 +16,8 @@ import {
   CrowdsplitCreateDonationCustomerInterface,
   CrowdsplitCreateDonationCustomerRequest,
   CrowdsplitCreateDonationCustomerResponse,
+  CrowdsplitGetCustomerApiResponse,
+  CrowdsplitCustomerData,
   CrowdsplitInitiateKycResponse,
   CrowdsplitKycStatusResponse,
   CrowdsplitPaymentMethodCreateInterface,
@@ -101,11 +103,19 @@ export class CrowdsplitService {
 
       if (!response.ok) {
         console.error(`Crowdsplit API error (${response.status}):`, data);
-        throw new Error(
-          data.message ||
+
+        const apiError = new Error(
+          data.msg ||
+            data.message ||
             data.error ||
             `Crowdsplit API error: ${response.status} ${response.statusText}`,
         );
+
+        // Attach the original API response for better error handling
+        (apiError as any).apiResponse = data;
+        (apiError as any).statusCode = response.status;
+
+        throw apiError;
       }
 
       return data;
@@ -181,6 +191,12 @@ export class CrowdsplitService {
   async createDonationCustomer(
     customerData: CrowdsplitCreateDonationCustomerInterface,
   ) {
+    debug &&
+      console.log(
+        '[CrowdSplit Service] Creating new donation customer for email:',
+        customerData.email,
+      );
+
     const payload = {
       email: customerData.email,
     } as CrowdsplitCreateDonationCustomerRequest;
@@ -190,7 +206,46 @@ export class CrowdsplitService {
         'POST',
         payload,
       );
+
+    debug &&
+      console.log(
+        '[CrowdSplit Service] Successfully created donation customer:',
+        {
+          customerId: response.data.id,
+          email: response.data.email,
+        },
+      );
+
     return response.data;
+  }
+
+  async getCustomer(customerId: string): Promise<CrowdsplitCustomerData> {
+    debug &&
+      console.log('[CrowdSplit Service] Getting customer by ID:', customerId);
+
+    try {
+      const response = await this.request<CrowdsplitGetCustomerApiResponse>(
+        `/api/v1/customers/${customerId}`,
+        'GET',
+      );
+
+      debug &&
+        console.log('[CrowdSplit Service] Successfully retrieved customer:', {
+          customerId: response.data.id,
+          email: response.data.email,
+          hasFirstName: !!response.data.first_name,
+          hasLastName: !!response.data.last_name,
+        });
+
+      return response.data;
+    } catch (error) {
+      debug &&
+        console.error('[CrowdSplit Service] Failed to retrieve customer:', {
+          customerId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      throw error;
+    }
   }
 
   async initiateKyc(customerId: string) {
